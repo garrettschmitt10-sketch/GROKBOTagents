@@ -31,29 +31,33 @@ body {
 }
 
 #app {
-  height: 100%;
+  height: 100dvh;
+  height: 100svh;
   width: 100%;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 #stage {
   position: relative;
-  width: min(100vw, 560px);
-  height: 100dvh;
-  height: 100svh;
+  width: min(100%, 520px);
+  height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   max-height: 100%;
+  overflow: hidden;
+  min-height: 0;
 }
 
 #topbar {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 8px 12px 4px;
+  padding: 6px 10px 2px;
   gap: 8px;
   z-index: 2;
+  flex-shrink: 0;
 }
 
 .crowns {
@@ -94,7 +98,7 @@ body {
 }
 
 #timer {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -130,6 +134,7 @@ body {
   display: block;
   cursor: crosshair;
   touch-action: none;
+  min-height: 0;
 }
 
 #toasts {
@@ -174,9 +179,10 @@ body {
 }
 
 #hud {
-  padding: 6px 10px calc(10px + env(safe-area-inset-bottom));
+  padding: 4px 8px calc(8px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(7, 16, 24, 0.96), rgba(7, 16, 24, 0.55) 70%, transparent);
   z-index: 2;
+  min-height: 0;
 }
 
 #elixir-row {
@@ -270,12 +276,13 @@ body {
   appearance: none;
   border: 2px solid #31424c;
   background: #121c24;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 0;
   color: inherit;
   display: grid;
   grid-template-rows: 1fr auto;
-  min-height: 108px;
+  min-height: 0;
+  height: 96px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -285,7 +292,7 @@ body {
 
 .card canvas {
   width: 100%;
-  height: 72px;
+  height: 58px;
   display: block;
 }
 
@@ -358,23 +365,24 @@ body {
 }
 
 .panel {
-  width: min(420px, 100%);
+  width: min(440px, 100%);
   background: linear-gradient(180deg, #15222c, #0d171e);
   border: 1px solid var(--line);
   border-radius: 22px;
-  padding: 28px 24px 22px;
+  padding: 24px 22px 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
   text-align: center;
 }
 
 .panel.hero h1 {
-  font-size: clamp(42px, 10vw, 58px);
+  font-size: clamp(32px, 7.2vw, 46px);
   margin: 0 0 8px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   background: linear-gradient(#fff6d4, var(--gold), #b8872a);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  white-space: nowrap;
 }
 
 .eyebrow {
@@ -490,7 +498,25 @@ body {
 
 @media (min-height: 900px) {
   .card {
-    min-height: 124px;
+    height: 118px;
+  }
+  .card canvas {
+    height: 72px;
+  }
+}
+
+@media (max-height: 700px) {
+  .card {
+    height: 78px;
+  }
+  .card canvas {
+    height: 44px;
+  }
+  #elixir-row {
+    margin-bottom: 4px;
+  }
+  .card .name {
+    font-size: 11px;
   }
 }
 

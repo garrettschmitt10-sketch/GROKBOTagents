@@ -267,6 +267,7 @@ function resize(): void {
 }
 
 window.addEventListener("resize", resize);
+new ResizeObserver(() => resize()).observe(canvas.parentElement ?? canvas);
 resize();
 
 function fmtTime(match: Match): string {
