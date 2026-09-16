@@ -1,6 +1,8 @@
 # Aetherlane
 
-A vertical-arena real-time card duel you can play in the browser. You command **Aurora Keep** against a **Dusk Court** bot. Spend Aether, drop keepers, and shatter the rival Crownspire before the rift timer closes.
+A vertical-arena real-time card duel you can play in the browser. You command **Aurora Keep** against a **Dusk Court** bot across the **Duskglass Courts** — a neon crystal sky-lane split by a river of starlight.
+
+Spend Aether, drop keepers, and shatter the rival Crownspire before the timer closes.
 
 This is an original game inspired by lane-push card battles. It does not use Clash Royale / Supercell names, logos, or assets.
 
@@ -30,7 +32,7 @@ npm test
 
 ## How to play
 
-1. Choose **Easy** or **Normal** bot mind, then **Start Match**.
+1. Choose **Easy** or **Normal** bot mind, then **Enter the Courts**.
 2. You hold **4 cards**. Playing one draws the next from an 8-card deck.
 3. **Aether** regenerates over time (max 10). Every card has an Aether cost.
 4. Tap a card, then tap **your half of the arena** — or drag the card onto the field.

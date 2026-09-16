@@ -19,10 +19,14 @@ export interface ViewCam {
   s: number;
 }
 
+const AURORA = "#5cf6d5";
+const DUSK = "#ff6b9a";
+const GOLD = "#f4d78a";
+
 export function layoutCam(cw: number, ch: number): ViewCam {
-  const padX = cw * 0.07;
-  const padTop = ch * 0.015;
-  const padBot = ch * 0.012;
+  const padX = cw * 0.055;
+  const padTop = ch * 0.012;
+  const padBot = ch * 0.01;
   const s = Math.min((cw - padX * 2) / ARENA_W, (ch - padTop - padBot) / ARENA_H);
   const x = (cw - ARENA_W * s) / 2;
   const y = padTop + (ch - padTop - padBot - ARENA_H * s) / 2;
@@ -37,7 +41,9 @@ export function screenToWorld(cam: ViewCam, x: number, y: number): { x: number; 
   return { x: (x - cam.x) / cam.s, y: (y - cam.y) / cam.s };
 }
 
-const teamGlow = (team: Team) => (team === 0 ? "#3ee0c5" : "#ff6b7a");
+const teamGlow = (team: Team) => (team === 0 ? AURORA : DUSK);
+const teamDeep = (team: Team) => (team === 0 ? "#0c3d3a" : "#3a1028");
+const teamMid = (team: Team) => (team === 0 ? "#1a7a72" : "#8a2a4e");
 
 export function drawArena(
   ctx: CanvasRenderingContext2D,
@@ -51,130 +57,257 @@ export function drawArena(
   ctx.translate(cam.x, cam.y);
   ctx.scale(s, s);
 
-  roundRect(ctx, -0.35, -0.35, ARENA_W + 0.7, ARENA_H + 0.7, 0.7);
-  ctx.fillStyle = "#0b1c24";
-  ctx.fill();
-  ctx.strokeStyle = "#d7b56a";
-  ctx.lineWidth = 0.18;
-  ctx.stroke();
-
-  const g = ctx.createLinearGradient(0, 0, 0, ARENA_H);
-  g.addColorStop(0, "#2a1630");
-  g.addColorStop(0.46, "#173246");
-  g.addColorStop(0.5, "#1a3e52");
-  g.addColorStop(0.54, "#14362c");
-  g.addColorStop(1, "#102c28");
-  roundRect(ctx, 0, 0, ARENA_W, ARENA_H, 0.45);
-  ctx.fillStyle = g;
-  ctx.fill();
+  drawOuterFrame(ctx, t);
 
   ctx.save();
   ctx.beginPath();
-  roundRect(ctx, 0, 0, ARENA_W, ARENA_H, 0.45);
+  roundRect(ctx, 0, 0, ARENA_W, ARENA_H, 0.5);
   ctx.clip();
 
-  for (let row = 0; row < ARENA_H; row++) {
-    for (let col = 0; col < ARENA_W; col++) {
-      if ((row + col) % 2 === 0) continue;
-      const north = row < RIVER_TOP;
-      ctx.fillStyle = north ? "rgba(80, 30, 70, 0.18)" : "rgba(20, 70, 60, 0.16)";
-      ctx.fillRect(col, row, 1, 1);
-    }
-  }
-
-  ctx.fillStyle = "rgba(255,255,255,0.035)";
-  ctx.fillRect(ARENA_W * 0.5 - 0.04, 0.4, 0.08, ARENA_H - 0.8);
-
+  drawCourtFloor(ctx, t);
+  drawLaneRunes(ctx, t);
   drawRiver(ctx, t);
-  drawBridges(ctx);
-  drawPads(ctx, match);
+  drawBridges(ctx, t);
+  drawPads(ctx, match, t);
 
   if (hover?.cardId) {
     drawDeployHint(ctx, match, { ...hover, cardId: hover.cardId });
   }
 
   const sorted = match.entities.slice().sort((a, b) => a.y - b.y || a.id - b.id);
-  for (const e of sorted) {
-    if (e.kind === "tower") drawTower(ctx, e, t);
-  }
-  for (const e of sorted) {
-    if (e.kind === "building") drawBuilding(ctx, e, t, match.now);
-  }
-  for (const e of sorted) {
-    if (e.kind === "troop") drawTroop(ctx, e, t, match.now);
-  }
-  for (const e of sorted) {
-    if (e.kind === "spell") drawSpellMarker(ctx, e, match.now);
-  }
+  for (const e of sorted) if (e.kind === "tower") drawTower(ctx, e, t);
+  for (const e of sorted) if (e.kind === "building") drawBuilding(ctx, e, t, match.now);
+  for (const e of sorted) if (e.kind === "troop") drawTroop(ctx, e, t, match.now);
+  for (const e of sorted) if (e.kind === "spell") drawSpellMarker(ctx, e, t);
   for (const p of match.projectiles) drawProjectile(ctx, p, t);
   for (const e of sorted) {
     if (e.kind === "tower" || e.kind === "building" || e.kind === "troop") drawHealth(ctx, e);
   }
 
   ctx.restore();
+  ctx.restore();
+}
 
-  ctx.strokeStyle = "rgba(255, 220, 140, 0.55)";
-  ctx.lineWidth = 0.08;
-  roundRect(ctx, 0.08, 0.08, ARENA_W - 0.16, ARENA_H - 0.16, 0.4);
+function drawOuterFrame(ctx: CanvasRenderingContext2D, t: number): void {
+  roundRect(ctx, -0.55, -0.55, ARENA_W + 1.1, ARENA_H + 1.1, 0.85);
+  const rim = ctx.createLinearGradient(0, 0, ARENA_W, ARENA_H);
+  rim.addColorStop(0, "#1a3d48");
+  rim.addColorStop(0.5, "#2a1a38");
+  rim.addColorStop(1, "#1a3d48");
+  ctx.fillStyle = rim;
+  ctx.fill();
+
+  roundRect(ctx, -0.38, -0.38, ARENA_W + 0.76, ARENA_H + 0.76, 0.72);
+  ctx.strokeStyle = GOLD;
+  ctx.globalAlpha = 0.55 + Math.sin(t * 1.4) * 0.12;
+  ctx.lineWidth = 0.12;
   ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  roundRect(ctx, 0, 0, ARENA_W, ARENA_H, 0.5);
+  ctx.fillStyle = "#07101c";
+  ctx.fill();
+}
+
+function drawCourtFloor(ctx: CanvasRenderingContext2D, t: number): void {
+  const sky = ctx.createLinearGradient(0, 0, 0, ARENA_H);
+  sky.addColorStop(0, "#1a0c28");
+  sky.addColorStop(0.42, "#122038");
+  sky.addColorStop(0.5, "#16324a");
+  sky.addColorStop(0.58, "#0e2a32");
+  sky.addColorStop(1, "#071e24");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, ARENA_W, ARENA_H);
+
+  ctx.globalAlpha = 0.55;
+  const aurora = ctx.createLinearGradient(0, 0, ARENA_W, ARENA_H * 0.45);
+  aurora.addColorStop(0, "rgba(255, 90, 140, 0.18)");
+  aurora.addColorStop(0.5, "rgba(90, 220, 255, 0.08)");
+  aurora.addColorStop(1, "rgba(80, 255, 210, 0.16)");
+  ctx.fillStyle = aurora;
+  ctx.beginPath();
+  ctx.moveTo(0, 2);
+  for (let x = 0; x <= ARENA_W; x += 0.4) {
+    ctx.lineTo(x, 3.2 + Math.sin(x * 0.45 + t * 0.35) * 1.1);
+  }
+  ctx.lineTo(ARENA_W, 0);
+  ctx.lineTo(0, 0);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  for (let i = 0; i < 48; i++) {
+    const sx = ((i * 47) % 180) / 10;
+    const sy = ((i * 31) % 310) / 10;
+    const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 2.2 + i));
+    ctx.globalAlpha = 0.15 + tw * 0.45;
+    ctx.fillStyle = i % 3 === 0 ? GOLD : "#e8f6ff";
+    ctx.beginPath();
+    ctx.arc(sx, sy, 0.04 + (i % 4) * 0.015, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  for (let row = 0; row < ARENA_H; row++) {
+    for (let col = 0; col < ARENA_W; col++) {
+      if ((row + col) % 2) continue;
+      const north = row < RIVER_TOP;
+      ctx.fillStyle = north ? "rgba(140, 40, 90, 0.07)" : "rgba(30, 110, 100, 0.07)";
+      ctx.fillRect(col, row, 1, 1);
+    }
+  }
+
+  const vein = ctx.createLinearGradient(0, 0, ARENA_W, ARENA_H);
+  vein.addColorStop(0, "rgba(92, 246, 213, 0.06)");
+  vein.addColorStop(1, "rgba(255, 107, 154, 0.06)");
+  ctx.strokeStyle = vein;
+  ctx.lineWidth = 0.035;
+  for (let i = 0; i < 7; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * 2.6, 0);
+    ctx.bezierCurveTo(i * 2.6 + 1.5, 10, i * 2.6 - 1, 22, i * 2.6 + 0.8, ARENA_H);
+    ctx.stroke();
+  }
+}
+
+function drawLaneRunes(ctx: CanvasRenderingContext2D, t: number): void {
+  ctx.save();
+  ctx.globalAlpha = 0.22 + Math.sin(t * 1.6) * 0.06;
+  for (const x of [3.8, 14.2]) {
+    const lg = ctx.createLinearGradient(x, 1.6, x, ARENA_H - 1.6);
+    lg.addColorStop(0, DUSK);
+    lg.addColorStop(0.5, "#9ad8ff");
+    lg.addColorStop(1, AURORA);
+    ctx.strokeStyle = lg;
+    ctx.lineWidth = 0.18;
+    ctx.beginPath();
+    ctx.moveTo(x, 2.4);
+    ctx.lineTo(x, RIVER_TOP - 0.15);
+    ctx.moveTo(x, RIVER_BOT + 0.15);
+    ctx.lineTo(x, ARENA_H - 2.4);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = GOLD;
+  for (const cx of [3.8, 9, 14.2]) {
+    for (const cy of [11.2, 20.8]) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 0.22, 0, Math.PI * 2);
+      ctx.strokeStyle = GOLD;
+      ctx.lineWidth = 0.05;
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
 function drawRiver(ctx: CanvasRenderingContext2D, t: number): void {
   const y = RIVER_TOP;
   const h = RIVER_BOT - RIVER_TOP;
+
+  ctx.fillStyle = "rgba(20, 180, 220, 0.18)";
+  ctx.fillRect(0, y - 0.35, ARENA_W, h + 0.7);
+
   const rg = ctx.createLinearGradient(0, y, 0, y + h);
-  rg.addColorStop(0, "#1c5c88");
-  rg.addColorStop(0.5, "#3ad0e8");
-  rg.addColorStop(1, "#1c5c88");
+  rg.addColorStop(0, "#123a62");
+  rg.addColorStop(0.35, "#2ec7e8");
+  rg.addColorStop(0.5, "#b8fbff");
+  rg.addColorStop(0.65, "#5a8cff");
+  rg.addColorStop(1, "#123a62");
   ctx.fillStyle = rg;
   ctx.fillRect(0, y, ARENA_W, h);
-  ctx.globalAlpha = 0.35;
-  ctx.strokeStyle = "#b7f6ff";
-  ctx.lineWidth = 0.06;
-  for (let i = 0; i < 6; i++) {
+
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = "#e8ffff";
+  ctx.lineWidth = 0.045;
+  for (let i = 0; i < 5; i++) {
     ctx.beginPath();
-    const yy = y + 0.22 + i * 0.24;
-    for (let x = 0; x <= ARENA_W; x += 0.25) {
-      const oy = Math.sin(x * 1.3 + t * 2.2 + i) * 0.08;
+    const yy = y + 0.22 + i * 0.28;
+    for (let x = 0; x <= ARENA_W; x += 0.2) {
+      const oy = Math.sin(x * 1.15 + t * 2.4 + i * 0.9) * 0.1;
       if (x === 0) ctx.moveTo(x, yy + oy);
       else ctx.lineTo(x, yy + oy);
     }
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  for (let i = 0; i < 10; i++) {
+    const px = (i * 1.9 + t * 0.6) % ARENA_W;
+    const py = y + 0.35 + Math.sin(t * 3 + i) * 0.4;
+    ctx.globalAlpha = 0.35 + Math.sin(t * 5 + i) * 0.25;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(px, py, 0.07, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
-function drawBridges(ctx: CanvasRenderingContext2D): void {
+function drawBridges(ctx: CanvasRenderingContext2D, t: number): void {
   for (const b of BRIDGES) {
     const x = b.x1;
     const w = b.x2 - b.x1;
-    const y = RIVER_TOP - 0.18;
-    const h = RIVER_BOT - RIVER_TOP + 0.36;
-    roundRect(ctx, x, y, w, h, 0.18);
-    ctx.fillStyle = "#6a4a32";
+    const y = RIVER_TOP - 0.22;
+    const h = RIVER_BOT - RIVER_TOP + 0.44;
+
+    ctx.fillStyle = "rgba(80, 220, 255, 0.12)";
+    roundRect(ctx, x - 0.12, y - 0.08, w + 0.24, h + 0.16, 0.22);
     ctx.fill();
-    ctx.strokeStyle = "#d7b08a";
-    ctx.lineWidth = 0.08;
+
+    const glass = ctx.createLinearGradient(x, y, x + w, y + h);
+    glass.addColorStop(0, "rgba(180, 230, 255, 0.35)");
+    glass.addColorStop(0.5, "rgba(90, 140, 190, 0.55)");
+    glass.addColorStop(1, "rgba(180, 230, 255, 0.3)");
+    roundRect(ctx, x, y, w, h, 0.16);
+    ctx.fillStyle = glass;
+    ctx.fill();
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 0.07;
     ctx.stroke();
-    ctx.fillStyle = "#8a6242";
-    const planks = 8;
-    for (let i = 0; i < planks; i++) {
-      ctx.fillRect(x + 0.1, y + 0.12 + i * (h / planks), w - 0.2, h / planks - 0.08);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.28)";
+    ctx.lineWidth = 0.04;
+    for (let i = 1; i < 6; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 0.12, y + (h * i) / 6);
+      ctx.lineTo(x + w - 0.12, y + (h * i) / 6);
+      ctx.stroke();
     }
-    ctx.fillStyle = "#c9a227";
-    ctx.fillRect(x + 0.12, y + 0.06, 0.12, h - 0.12);
-    ctx.fillRect(x + w - 0.24, y + 0.06, 0.12, h - 0.12);
+
+    ctx.fillStyle = GOLD;
+    ctx.globalAlpha = 0.85 + Math.sin(t * 3) * 0.1;
+    ctx.fillRect(x + 0.08, y + 0.06, 0.12, h - 0.12);
+    ctx.fillRect(x + w - 0.2, y + 0.06, 0.12, h - 0.12);
+    ctx.globalAlpha = 1;
+
+    for (const px of [x + 0.18, x + w - 0.18]) {
+      for (const py of [y + 0.08, y + h - 0.08]) {
+        ctx.beginPath();
+        ctx.arc(px, py, 0.12, 0, Math.PI * 2);
+        ctx.fillStyle = "#dff8ff";
+        ctx.fill();
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = 0.04;
+        ctx.stroke();
+      }
+    }
   }
 }
 
-function drawPads(ctx: CanvasRenderingContext2D, match: Match): void {
+function drawPads(ctx: CanvasRenderingContext2D, match: Match, t: number): void {
   for (const e of match.entities) {
     if (e.kind !== "tower") continue;
+    ctx.save();
+    ctx.translate(e.x, e.y);
     ctx.beginPath();
-    ctx.ellipse(e.x, e.y + e.radius * 0.55, e.radius * 1.25, e.radius * 0.55, 0, 0, Math.PI * 2);
-    ctx.fillStyle = e.team === 0 ? "rgba(62,224,197,0.16)" : "rgba(255,107,122,0.16)";
+    ctx.ellipse(0, e.radius * 0.62, e.radius * 1.45, e.radius * 0.58, 0, 0, Math.PI * 2);
+    const pulse = 0.14 + Math.sin(t * 2.4 + e.id) * 0.05;
+    ctx.fillStyle = e.team === 0 ? `rgba(92,246,213,${pulse})` : `rgba(255,107,154,${pulse})`;
     ctx.fill();
+    ctx.strokeStyle = teamGlow(e.team);
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = 0.06;
+    ctx.stroke();
+    ctx.restore();
   }
 }
 
@@ -185,31 +318,34 @@ function drawDeployHint(
 ): void {
   const card = cardById(hover.cardId);
   ctx.save();
+  const col = hover.valid ? AURORA : DUSK;
   if (card.kind === "spell") {
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = hover.valid ? "#3ee0c5" : "#ff5a6a";
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = col;
     ctx.beginPath();
     ctx.arc(hover.x, hover.y, card.spellRadius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 0.7;
-    ctx.strokeStyle = hover.valid ? "#3ee0c5" : "#ff5a6a";
-    ctx.lineWidth = 0.08;
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 0.1;
+    ctx.setLineDash([0.18, 0.12]);
     ctx.stroke();
+    ctx.setLineDash([]);
   } else {
     const unlock = match.unlocksFor(0);
-    ctx.globalAlpha = 0.14;
-    ctx.fillStyle = "#3ee0c5";
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = AURORA;
     ctx.fillRect(0.15, RIVER_BOT, ARENA_W - 0.3, ARENA_H - RIVER_BOT - 1.2);
     if (unlock.left) ctx.fillRect(0.15, 6.4, ARENA_W * 0.5 - 0.15, RIVER_TOP - 6.4);
     if (unlock.right) ctx.fillRect(ARENA_W * 0.5, 6.4, ARENA_W * 0.5 - 0.15, RIVER_TOP - 6.4);
     ctx.globalAlpha = 0.9;
     ctx.beginPath();
-    ctx.arc(hover.x, hover.y, card.radius + 0.15, 0, Math.PI * 2);
+    ctx.arc(hover.x, hover.y, card.radius + 0.22, 0, Math.PI * 2);
     ctx.strokeStyle = hover.valid ? "#e8fff8" : "#ff8a96";
-    ctx.lineWidth = 0.1;
+    ctx.lineWidth = 0.08;
     ctx.stroke();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = hover.valid ? "#3ee0c5" : "#ff5a6a";
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = col;
     ctx.fill();
   }
   ctx.restore();
@@ -220,57 +356,86 @@ function drawTower(ctx: CanvasRenderingContext2D, e: Entity, t: number): void {
   const glow = teamGlow(e.team);
   ctx.save();
   ctx.translate(e.x, e.y);
-  if (e.dying > 0) ctx.globalAlpha = Math.max(0, e.dying);
+  if (e.dying > 0) {
+    ctx.globalAlpha = Math.max(0, e.dying);
+    ctx.rotate((0.9 - e.dying) * 0.2);
+  }
+
+  const bodyH = king ? 2.35 : 1.78;
+  const bodyW = king ? 1.72 : 1.28;
 
   ctx.beginPath();
-  ctx.ellipse(0, e.radius * 0.7, e.radius * 0.95, e.radius * 0.32, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.ellipse(0, 0.55, bodyW * 0.72, 0.32, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
   ctx.fill();
 
-  const bodyH = king ? 2.15 : 1.65;
-  const bodyW = king ? 1.55 : 1.2;
-  roundRect(ctx, -bodyW / 2, -bodyH + 0.4, bodyW, bodyH, 0.18);
-  const bg = ctx.createLinearGradient(0, -bodyH, 0, 0.5);
-  bg.addColorStop(0, king ? "#efe0a8" : "#d5e6f4");
-  bg.addColorStop(1, e.team === 0 ? "#2d6a62" : "#6a2d44");
-  ctx.fillStyle = bg;
+  const baseG = ctx.createLinearGradient(0, -bodyH, 0, 0.55);
+  baseG.addColorStop(0, king ? "#fff1c2" : "#e4f4ff");
+  baseG.addColorStop(0.35, glow);
+  baseG.addColorStop(1, teamDeep(e.team));
+
+  ctx.beginPath();
+  ctx.moveTo(-bodyW * 0.52, 0.42);
+  ctx.lineTo(-bodyW * 0.38, -bodyH * 0.15);
+  ctx.lineTo(-bodyW * 0.18, -bodyH + 0.55);
+  ctx.lineTo(0, -bodyH + 0.22);
+  ctx.lineTo(bodyW * 0.18, -bodyH + 0.55);
+  ctx.lineTo(bodyW * 0.38, -bodyH * 0.15);
+  ctx.lineTo(bodyW * 0.52, 0.42);
+  ctx.closePath();
+  ctx.fillStyle = baseG;
   ctx.fill();
   ctx.strokeStyle = glow;
-  ctx.lineWidth = 0.08;
+  ctx.lineWidth = 0.07;
   ctx.stroke();
 
-  ctx.fillStyle = glow;
-  ctx.globalAlpha = e.active ? 0.85 : 0.25;
+  ctx.fillStyle = teamMid(e.team);
+  roundRect(ctx, -bodyW * 0.16, -0.08, bodyW * 0.32, 0.5, 0.08);
+  ctx.fill();
+  ctx.fillStyle = e.active ? glow : "rgba(0,0,0,0.35)";
+  ctx.globalAlpha = e.active ? 0.9 : 0.35;
   ctx.beginPath();
-  ctx.arc(0, -bodyH + 0.55, king ? 0.32 : 0.22, 0, Math.PI * 2);
+  ctx.arc(0, 0.12, 0.12, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.fillStyle = "#1a2430";
-  roundRect(ctx, -bodyW * 0.22, -0.15, bodyW * 0.44, 0.55, 0.08);
+
+  const winY = -bodyH * 0.42;
+  ctx.fillStyle = e.active ? "#fff8d0" : "#6a7a88";
+  ctx.globalAlpha = e.active ? 0.7 + Math.sin(t * 4 + e.id) * 0.2 : 0.25;
+  for (const wx of [-0.28, 0.12]) {
+    roundRect(ctx, wx, winY, 0.16, 0.22, 0.04);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = GOLD;
+  ctx.beginPath();
+  ctx.moveTo(0, -bodyH - (king ? 0.22 : 0.08));
+  ctx.lineTo(0.22, -bodyH + 0.28);
+  ctx.lineTo(0, -bodyH + 0.12);
+  ctx.lineTo(-0.22, -bodyH + 0.28);
+  ctx.closePath();
   ctx.fill();
 
   if (king) {
-    ctx.fillStyle = "#f6d56a";
+    ctx.strokeStyle = glow;
+    ctx.globalAlpha = e.active ? 0.45 + Math.sin(t * 3) * 0.15 : 0.08;
+    ctx.lineWidth = 0.06;
     ctx.beginPath();
-    ctx.moveTo(0, -bodyH - 0.15);
-    ctx.lineTo(0.28, -bodyH + 0.28);
-    ctx.lineTo(-0.28, -bodyH + 0.28);
-    ctx.closePath();
-    ctx.fill();
+    ctx.arc(0, -0.15, 1.15 + Math.sin(t * 2) * 0.05, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   if (!e.active && king) {
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
-    roundRect(ctx, -bodyW / 2, -bodyH + 0.4, bodyW, bodyH, 0.18);
+    ctx.fillStyle = "rgba(4, 8, 16, 0.32)";
+    ctx.beginPath();
+    ctx.moveTo(-bodyW * 0.52, 0.42);
+    ctx.lineTo(0, -bodyH + 0.22);
+    ctx.lineTo(bodyW * 0.52, 0.42);
+    ctx.closePath();
     ctx.fill();
   }
-
-  const pulse = 0.5 + Math.sin(t * 3 + e.id) * 0.15;
-  ctx.strokeStyle = `rgba(255,255,255,${e.active ? pulse * 0.25 : 0.05})`;
-  ctx.lineWidth = 0.05;
-  ctx.beginPath();
-  ctx.arc(0, 0.1, e.radius + 0.15, 0, Math.PI * 2);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -279,36 +444,62 @@ function drawBuilding(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: 
   ctx.translate(e.x, e.y);
   if (now < e.deployUntil) {
     const k = 1 - (e.deployUntil - now) / 0.85;
-    ctx.translate(0, (1 - k) * -1.2);
-    ctx.globalAlpha = Math.max(0.2, k);
+    ctx.translate(0, (1 - k) * -1.4);
+    ctx.globalAlpha = Math.max(0.15, k);
+    ctx.scale(0.7 + k * 0.3, 0.7 + k * 0.3);
   }
-  if (e.dying > 0) ctx.globalAlpha = Math.max(0, e.dying * 3);
+  if (e.dying > 0) {
+    ctx.globalAlpha = Math.max(0, e.dying * 3);
+    ctx.scale(1 + (0.28 - Math.min(e.dying, 0.28)), 1 + (0.28 - Math.min(e.dying, 0.28)));
+  }
+
   ctx.beginPath();
-  ctx.ellipse(0, 0.45, 0.7, 0.28, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.ellipse(0, 0.48, 0.78, 0.28, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.fill();
+
   const glow = teamGlow(e.team);
-  ctx.rotate(Math.PI / 6);
-  hexPath(ctx, 0, -0.15, 0.62);
-  ctx.fillStyle = "#2a2150";
+  const g = ctx.createLinearGradient(0, -1.1, 0, 0.4);
+  g.addColorStop(0, "#f0e8ff");
+  g.addColorStop(0.4, e.color);
+  g.addColorStop(1, teamDeep(e.team));
+
+  ctx.beginPath();
+  ctx.moveTo(0, -1.15);
+  ctx.lineTo(0.42, -0.15);
+  ctx.lineTo(0.28, 0.42);
+  ctx.lineTo(-0.28, 0.42);
+  ctx.lineTo(-0.42, -0.15);
+  ctx.closePath();
+  ctx.fillStyle = g;
   ctx.fill();
   ctx.strokeStyle = glow;
-  ctx.lineWidth = 0.08;
+  ctx.lineWidth = 0.07;
   ctx.stroke();
-  ctx.rotate(-Math.PI / 6);
-  ctx.fillStyle = e.color;
-  ctx.beginPath();
-  ctx.moveTo(0, -0.95);
-  ctx.lineTo(0.22, -0.2);
-  ctx.lineTo(-0.22, -0.2);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(0, -0.15, 0.18 + Math.sin(t * 6) * 0.03, 0, Math.PI * 2);
+
   ctx.fillStyle = "#fff";
+  ctx.globalAlpha = 0.8 + Math.sin(t * 6) * 0.2;
+  ctx.beginPath();
+  ctx.arc(0, -0.22, 0.16, 0, Math.PI * 2);
   ctx.fill();
-  if (now < e.frozenUntil) frostOverlay(ctx, 0.7);
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = glow;
+  ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  ctx.arc(0, -0.22, 0.38 + Math.sin(t * 4) * 0.04, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  if (justStruck(e, now)) {
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.fill();
+  }
+  if (now < e.frozenUntil) frostOverlay(ctx, 0.75);
   ctx.restore();
+}
+
+function justStruck(e: Entity, now: number): boolean {
+  return now >= e.deployUntil && e.attackCd > e.hitSpeed - 0.16;
 }
 
 function drawTroop(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: number): void {
@@ -317,157 +508,250 @@ function drawTroop(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: num
   const deploying = now < e.deployUntil;
   if (deploying) {
     const k = 1 - (e.deployUntil - now) / 0.7;
-    ctx.translate(0, (1 - clamp(k, 0, 1)) * -1.4);
-    ctx.globalAlpha = clamp(k + 0.2, 0.2, 1);
+    ctx.translate(0, (1 - clamp(k, 0, 1)) * -1.55);
+    ctx.globalAlpha = clamp(k + 0.15, 0.15, 1);
   }
   if (e.dying > 0) {
-    ctx.globalAlpha = Math.max(0, e.dying / 0.28);
-    ctx.scale(1 + (0.28 - e.dying) * 1.4, 1 + (0.28 - e.dying) * 1.4);
+    const d = clamp(e.dying / 0.28, 0, 1);
+    ctx.globalAlpha = d;
+    ctx.rotate((1 - d) * 0.8);
+    ctx.scale(1 + (1 - d) * 0.8, 1 + (1 - d) * 0.8);
   }
-  const walk = e.speed > 0 && now >= e.deployUntil && now >= e.frozenUntil ? Math.sin(e.bob) * 0.06 : 0;
+  const idle = now >= e.deployUntil && now >= e.frozenUntil;
+  const walk = idle && e.speed > 0 ? Math.sin(e.bob) * 0.07 : Math.sin(t * 3 + e.id) * 0.025;
   ctx.translate(0, walk);
+  if (justStruck(e, now)) ctx.scale(1.12, 1.12);
 
   ctx.beginPath();
-  ctx.ellipse(0, e.radius * 0.85, e.radius * 0.9, e.radius * 0.35, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.ellipse(0, e.radius * 0.9, e.radius * 0.95, e.radius * 0.34, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.fill();
 
+  ctx.save();
   ctx.rotate(e.facing + Math.PI / 2);
   const id = e.cardId;
   if (id === "ironhide") drawIronhide(ctx, e);
   else if (id === "ashblade") drawAshblade(ctx, e);
   else if (id === "boltbow") drawBoltbow(ctx, e);
   else if (id === "cinderpot") drawCinderpot(ctx, e);
-  else drawSparklet(ctx, e);
+  else drawSparklet(ctx, e, t);
 
-  if (now < e.frozenUntil) frostOverlay(ctx, e.radius + 0.15);
+  if (justStruck(e, now)) {
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(0, 0, e.radius + 0.12, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
-  void t;
+
+  if (now < e.frozenUntil) frostOverlay(ctx, e.radius + 0.18);
+  ctx.restore();
 }
 
 function drawIronhide(ctx: CanvasRenderingContext2D, e: Entity): void {
   const g = teamGlow(e.team);
-  roundRect(ctx, -0.5, -0.45, 1.0, 0.95, 0.18);
-  ctx.fillStyle = "#8d97ad";
+  const body = ctx.createLinearGradient(-0.5, -0.7, 0.5, 0.6);
+  body.addColorStop(0, "#eef3ff");
+  body.addColorStop(0.4, "#9aa8c4");
+  body.addColorStop(1, teamDeep(e.team));
+  roundRect(ctx, -0.52, -0.42, 1.04, 1.02, 0.2);
+  ctx.fillStyle = body;
   ctx.fill();
   ctx.strokeStyle = g;
-  ctx.lineWidth = 0.07;
+  ctx.lineWidth = 0.08;
   ctx.stroke();
-  roundRect(ctx, -0.62, -0.15, 0.28, 0.7, 0.08);
-  ctx.fillStyle = "#cfd6e6";
+
+  roundRect(ctx, -0.7, -0.12, 0.3, 0.72, 0.1);
+  ctx.fillStyle = "#d5deee";
   ctx.fill();
-  ctx.fillStyle = "#1b2430";
-  ctx.fillRect(-0.18, -0.18, 0.14, 0.16);
-  ctx.fillRect(0.06, -0.18, 0.14, 0.16);
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 0.05;
+  ctx.stroke();
+  roundRect(ctx, 0.4, -0.12, 0.3, 0.72, 0.1);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#0b121c";
+  roundRect(ctx, -0.22, -0.22, 0.16, 0.14, 0.04);
+  ctx.fill();
+  roundRect(ctx, 0.06, -0.22, 0.16, 0.14, 0.04);
+  ctx.fill();
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(0, -0.55, 0.16, 0, Math.PI * 2);
+  ctx.arc(0, -0.58, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(0, -0.58, 0.08, 0, Math.PI * 2);
   ctx.fill();
 }
 
 function drawAshblade(ctx: CanvasRenderingContext2D, e: Entity): void {
   const g = teamGlow(e.team);
   ctx.beginPath();
-  ctx.moveTo(0, -0.55);
-  ctx.lineTo(0.38, 0.15);
-  ctx.lineTo(0, 0.48);
-  ctx.lineTo(-0.38, 0.15);
+  ctx.moveTo(0.02, -0.92);
+  ctx.lineTo(0.16, -0.22);
+  ctx.lineTo(0.05, 0.05);
+  ctx.lineTo(-0.08, -0.22);
   ctx.closePath();
-  ctx.fillStyle = "#d9a24a";
+  ctx.fillStyle = "#f7f1de";
+  ctx.fill();
+  ctx.strokeStyle = GOLD;
+  ctx.lineWidth = 0.04;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, -0.5);
+  ctx.lineTo(0.4, 0.18);
+  ctx.lineTo(0.08, 0.52);
+  ctx.lineTo(-0.4, 0.18);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(0, -0.5, 0, 0.5);
+  body.addColorStop(0, "#ffe7a0");
+  body.addColorStop(1, teamDeep(e.team));
+  ctx.fillStyle = body;
   ctx.fill();
   ctx.strokeStyle = g;
   ctx.lineWidth = 0.07;
   ctx.stroke();
-  ctx.fillStyle = "#f4f0e4";
-  ctx.fillRect(-0.05, -0.85, 0.1, 0.55);
+
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.moveTo(-0.05, -0.85);
-  ctx.lineTo(0.18, -0.62);
-  ctx.lineTo(0.05, -0.5);
-  ctx.closePath();
+  ctx.arc(0, -0.18, 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.beginPath();
+  ctx.moveTo(-0.18, 0.05);
+  ctx.quadraticCurveTo(0.35, 0.15, -0.05, 0.55);
+  ctx.quadraticCurveTo(-0.32, 0.22, -0.18, 0.05);
   ctx.fill();
 }
 
 function drawBoltbow(ctx: CanvasRenderingContext2D, e: Entity): void {
   const g = teamGlow(e.team);
+  const body = ctx.createRadialGradient(-0.1, -0.1, 0.05, 0, 0, 0.48);
+  body.addColorStop(0, "#d9ffe8");
+  body.addColorStop(0.5, "#2f8a62");
+  body.addColorStop(1, teamDeep(e.team));
   ctx.beginPath();
-  ctx.arc(0, 0, 0.38, 0, Math.PI * 2);
-  ctx.fillStyle = "#2f8a62";
+  ctx.arc(0, 0.02, 0.4, 0, Math.PI * 2);
+  ctx.fillStyle = body;
   ctx.fill();
   ctx.strokeStyle = g;
   ctx.lineWidth = 0.07;
   ctx.stroke();
-  ctx.strokeStyle = "#d9ffe8";
-  ctx.lineWidth = 0.07;
+
+  ctx.strokeStyle = "#ecfff4";
+  ctx.lineWidth = 0.08;
   ctx.beginPath();
-  ctx.arc(0, -0.05, 0.42, -Math.PI * 0.8, -Math.PI * 0.2);
+  ctx.arc(0, -0.02, 0.46, -Math.PI * 0.85, -Math.PI * 0.15);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(0, -0.05);
-  ctx.lineTo(0, -0.62);
+  ctx.moveTo(0, -0.02);
+  ctx.lineTo(0, -0.72);
   ctx.stroke();
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, -0.72, 0.07, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawCinderpot(ctx: CanvasRenderingContext2D, e: Entity): void {
   const g = teamGlow(e.team);
+  const body = ctx.createRadialGradient(-0.1, 0, 0.08, 0, 0.08, 0.5);
+  body.addColorStop(0, "#ffd7a0");
+  body.addColorStop(0.45, "#d45a30");
+  body.addColorStop(1, teamDeep(e.team));
   ctx.beginPath();
-  ctx.arc(0, 0.05, 0.42, 0, Math.PI * 2);
-  ctx.fillStyle = "#c45a32";
+  ctx.arc(0, 0.08, 0.44, 0, Math.PI * 2);
+  ctx.fillStyle = body;
   ctx.fill();
   ctx.strokeStyle = g;
   ctx.lineWidth = 0.07;
   ctx.stroke();
+
   ctx.fillStyle = "#ffd27a";
   ctx.beginPath();
-  ctx.arc(-0.08, -0.38, 0.16, 0, Math.PI * 2);
+  ctx.arc(-0.1, -0.42, 0.18, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "#ff7a3c";
   ctx.beginPath();
-  ctx.arc(0.12, -0.48, 0.1, 0, Math.PI * 2);
+  ctx.arc(0.14, -0.55, 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff4c8";
+  ctx.beginPath();
+  ctx.arc(0.02, -0.7, 0.07, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function drawSparklet(ctx: CanvasRenderingContext2D, e: Entity): void {
+function drawSparklet(ctx: CanvasRenderingContext2D, e: Entity, t: number): void {
   const g = teamGlow(e.team);
+  ctx.save();
+  ctx.rotate(t * 2);
   ctx.beginPath();
-  ctx.arc(0, 0, 0.26, 0, Math.PI * 2);
-  ctx.fillStyle = "#9be7ff";
+  for (let i = 0; i < 8; i++) {
+    const a = (Math.PI * 2 * i) / 8;
+    const r = i % 2 === 0 ? 0.32 : 0.14;
+    const px = Math.cos(a) * r;
+    const py = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = "#c8f6ff";
   ctx.fill();
   ctx.strokeStyle = g;
-  ctx.lineWidth = 0.06;
+  ctx.lineWidth = 0.05;
   ctx.stroke();
+  ctx.restore();
   ctx.fillStyle = "#fff";
   ctx.beginPath();
-  ctx.arc(-0.05, -0.05, 0.07, 0, Math.PI * 2);
+  ctx.arc(0, 0, 0.09, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function drawSpellMarker(ctx: CanvasRenderingContext2D, e: Entity, now: number): void {
+function drawSpellMarker(ctx: CanvasRenderingContext2D, e: Entity, t: number): void {
   const card = cardById(e.cardId!);
   const k = clamp(1 - e.attackCd / Math.max(0.05, card.spellDelay), 0, 1);
   ctx.save();
   ctx.translate(e.x, e.y);
-  ctx.globalAlpha = 0.35 + k * 0.4;
+  ctx.rotate(t * 0.8);
+  ctx.globalAlpha = 0.3 + k * 0.45;
   ctx.beginPath();
-  ctx.arc(0, 0, card.spellRadius * (0.75 + k * 0.25), 0, Math.PI * 2);
+  ctx.arc(0, 0, card.spellRadius * (0.7 + k * 0.3), 0, Math.PI * 2);
   ctx.strokeStyle = card.color;
-  ctx.lineWidth = 0.1;
+  ctx.lineWidth = 0.12;
   ctx.stroke();
+  ctx.setLineDash([0.25, 0.18]);
+  ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  ctx.arc(0, 0, card.spellRadius * 0.72, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
   ctx.fillStyle = card.color;
-  ctx.globalAlpha = 0.12 + k * 0.15;
+  ctx.globalAlpha = 0.1 + k * 0.18;
+  ctx.beginPath();
+  ctx.arc(0, 0, card.spellRadius * (0.7 + k * 0.3), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  void now;
 }
 
 function drawProjectile(ctx: CanvasRenderingContext2D, p: Projectile, t: number): void {
   ctx.save();
   ctx.translate(p.x, p.y);
+  const ang = Math.atan2(p.ty - p.y, p.tx - p.x);
+  ctx.rotate(ang);
   ctx.fillStyle = p.color;
   ctx.shadowColor = p.color;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 16;
   ctx.beginPath();
-  ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, p.radius * 2.4, p.radius * 0.85, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(0.04, 0, p.radius * 0.55, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
   void t;
@@ -475,44 +759,51 @@ function drawProjectile(ctx: CanvasRenderingContext2D, p: Projectile, t: number)
 
 function drawHealth(ctx: CanvasRenderingContext2D, e: Entity): void {
   if (e.hp <= 0) return;
-  const w = e.kind === "tower" ? (e.towerSlot === "king" ? 2.1 : 1.7) : Math.max(0.7, e.radius * 2.2);
-  const h = e.kind === "tower" ? 0.16 : 0.11;
-  const y = e.kind === "tower" ? - (e.towerSlot === "king" ? 2.05 : 1.55) : -e.radius - 0.38;
+  const w = e.kind === "tower" ? (e.towerSlot === "king" ? 2.25 : 1.82) : Math.max(0.78, e.radius * 2.3);
+  const h = e.kind === "tower" ? 0.18 : 0.12;
+  const y = e.kind === "tower" ? -(e.towerSlot === "king" ? 2.35 : 1.72) : -e.radius - 0.42;
   const pct = clamp(e.hp / e.maxHp, 0, 1);
   ctx.save();
   ctx.translate(e.x, e.y);
-  roundRect(ctx, -w / 2, y, w, h, 0.05);
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  roundRect(ctx, -w / 2 - 0.04, y - 0.03, w + 0.08, h + 0.06, 0.07);
+  ctx.fillStyle = "rgba(6, 10, 16, 0.72)";
   ctx.fill();
+  ctx.strokeStyle = "rgba(244, 215, 138, 0.45)";
+  ctx.lineWidth = 0.035;
+  ctx.stroke();
   roundRect(ctx, -w / 2, y, w * pct, h, 0.05);
-  ctx.fillStyle = pct > 0.45 ? teamGlow(e.team) : "#ffb347";
+  ctx.fillStyle = pct > 0.4 ? teamGlow(e.team) : "#ffb347";
   ctx.fill();
+  if (e.kind === "tower") {
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.font = "0.28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(Math.max(0, Math.round(e.hp))), 0, y + h * 0.55);
+  }
   ctx.restore();
 }
 
 function frostOverlay(ctx: CanvasRenderingContext2D, r: number): void {
   ctx.save();
-  ctx.globalAlpha = 0.45;
+  ctx.globalAlpha = 0.5;
   ctx.strokeStyle = "#d7f6ff";
-  ctx.lineWidth = 0.06;
+  ctx.lineWidth = 0.07;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = "rgba(180, 230, 255, 0.25)";
+  ctx.fillStyle = "rgba(180, 230, 255, 0.28)";
   ctx.fill();
-  ctx.restore();
-}
-
-function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
-  ctx.beginPath();
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 0.03;
   for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 6;
-    const px = x + Math.cos(a) * r;
-    const py = y + Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
+    const a = (i * Math.PI) / 3;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 0.08, Math.sin(a) * 0.08);
+    ctx.lineTo(Math.cos(a) * r * 0.85, Math.sin(a) * r * 0.85);
+    ctx.stroke();
   }
-  ctx.closePath();
+  ctx.restore();
 }
 
 export function roundRect(
@@ -542,15 +833,29 @@ export function drawCardArt(
 ): void {
   const card = cardById(cardId);
   ctx.clearRect(0, 0, w, h);
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, shade(card.color, 0.25));
-  bg.addColorStop(1, "#101820");
-  roundRect(ctx, 0, 0, w, h, 10);
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, shade(card.color, 0.55));
+  bg.addColorStop(0.45, shade(card.color, 0.22));
+  bg.addColorStop(1, "#070d16");
+  roundRect(ctx, 0, 0, w, h, 8);
   ctx.fillStyle = bg;
   ctx.fill();
+
   ctx.save();
-  ctx.translate(w / 2, h * 0.52);
-  ctx.scale(Math.min(w, h) / 2.4, Math.min(w, h) / 2.4);
+  ctx.beginPath();
+  roundRect(ctx, 0, 0, w, h, 8);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(-10, h * 0.7);
+  ctx.lineTo(w * 0.7, -10);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(w / 2, h * 0.54);
+  ctx.scale(Math.min(w, h) / 2.15, Math.min(w, h) / 2.15);
   const fake: Entity = {
     id: 0,
     team,
@@ -584,21 +889,23 @@ export function drawCardArt(
   };
   if (card.kind === "spell") {
     ctx.beginPath();
-    ctx.arc(0, 0, 0.55, 0, Math.PI * 2);
-    ctx.fillStyle = card.color;
-    ctx.globalAlpha = 0.85;
+    ctx.arc(0, 0, 0.58, 0, Math.PI * 2);
+    const sg = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 0.58);
+    sg.addColorStop(0, "#fff");
+    sg.addColorStop(0.4, card.color);
+    sg.addColorStop(1, "rgba(0,0,0,0.2)");
+    ctx.fillStyle = sg;
     ctx.fill();
-    ctx.globalAlpha = 1;
     ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 0.06;
+    ctx.lineWidth = 0.05;
     ctx.stroke();
   } else if (card.kind === "building") {
-    drawBuilding(ctx, fake, 0, 99);
+    drawBuilding(ctx, fake, 1, 99);
   } else if (cardId === "ironhide") drawIronhide(ctx, fake);
   else if (cardId === "ashblade") drawAshblade(ctx, fake);
   else if (cardId === "boltbow") drawBoltbow(ctx, fake);
   else if (cardId === "cinderpot") drawCinderpot(ctx, fake);
-  else drawSparklet(ctx, fake);
+  else drawSparklet(ctx, fake, 1);
   ctx.restore();
 }
 

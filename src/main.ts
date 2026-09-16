@@ -112,7 +112,7 @@ function beginMatch(): void {
   howtoEl.classList.add("hidden");
   endEl.classList.add("hidden");
   renderHand();
-  toast(difficulty === "easy" ? "Dusk Court minds the lanes gently." : "Dusk Court takes the field.");
+  toast(difficulty === "easy" ? "Dusk Court watches the sky-lane." : "Dusk Court takes the duskglass field.");
 }
 
 function renderHand(): void {
@@ -330,8 +330,8 @@ function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind
 
 function handleEvents(events: MatchEvent[]): void {
   for (const ev of events) {
-    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#3ee0c5" : "#ff6b7a", 10, "ring");
-    if (ev.type === "death") burst(ev.x, ev.y, "#ffd27a", 16, "burst");
+    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#5cf6d5" : "#ff6b9a", 14, "ring");
+    if (ev.type === "death") burst(ev.x, ev.y, "#f4d78a", 22, "burst");
     if (ev.type === "hit") {
       floaters.push({
         x: ev.x,
@@ -380,20 +380,20 @@ function showEnd(winner: "player" | "bot" | "draw"): void {
   if (winner === "player") {
     endTitle.textContent = "Victory";
     endTitle.classList.add("win");
-    endEyebrow.textContent = "Aurora Keep stands";
-    endSub.textContent = "The Dusk Court Crownspire is shattered.";
+    endEyebrow.textContent = "Aurora Keep holds the courts";
+    endSub.textContent = "The Dusk Court Crownspire shatters into starlight.";
     sfx.win();
   } else if (winner === "bot") {
     endTitle.textContent = "Defeat";
     endTitle.classList.add("lose");
-    endEyebrow.textContent = "The rift favors dusk";
+    endEyebrow.textContent = "Duskglass claims the lane";
     endSub.textContent = "Your Crownspire has fallen. Gather Aether and try again.";
     sfx.lose();
   } else {
     endTitle.textContent = "Stalemate";
     endTitle.classList.add("draw");
-    endEyebrow.textContent = "The river holds";
-    endSub.textContent = "Neither keep claimed the field.";
+    endEyebrow.textContent = "The starlight river holds";
+    endSub.textContent = "Neither keep claimed the duskglass courts.";
   }
   endScore.innerHTML = `<span>You ${match.player.crowns}</span><span>Dusk ${match.bot.crowns}</span>`;
 }
@@ -425,9 +425,16 @@ function drawParticles(): void {
     ctx.fillStyle = p.color;
     if (p.kind === "ring") {
       ctx.strokeStyle = p.color;
-      ctx.lineWidth = 0.06;
+      ctx.lineWidth = 0.07;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, (1 - a) * 0.8 + 0.2, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, (1 - a) * 1.1 + 0.18, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (p.kind === "frost") {
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 0.05;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.vx * 0.04, p.y + p.vy * 0.04);
       ctx.stroke();
     } else {
       ctx.beginPath();
@@ -485,7 +492,7 @@ function frame(now: number): void {
       ctx.globalAlpha = 0.55;
       ctx.beginPath();
       ctx.arc(ghost.x, ghost.y, 0.5 * cam.s, 0, Math.PI * 2);
-      ctx.fillStyle = hover.valid ? "#3ee0c5" : "#ff6b7a";
+      ctx.fillStyle = hover.valid ? "#5cf6d5" : "#ff6b9a";
       ctx.fill();
       ctx.globalAlpha = 1;
     }
