@@ -959,7 +959,7 @@ function drawTower(ctx: CanvasRenderingContext2D, e: Entity): void {
 function drawBuilding(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: number): void {
   ctx.save();
   ctx.translate(e.x, e.y);
-  ctx.scale(1.35, 1.35);
+  ctx.scale(1.55, 1.55);
   if (now < e.deployUntil) {
     const k = 1 - (e.deployUntil - now) / 0.42;
     ctx.translate(0, (1 - clamp(k, 0, 1)) * -0.7);
@@ -1188,11 +1188,11 @@ function drawProjectile(ctx: CanvasRenderingContext2D, p: Projectile): void {
 }
 
 function visScale(cardId: string | null): number {
-  if (cardId === "ironhide") return 1.45;
-  if (cardId === "mortar") return 1.55;
-  if (cardId === "bayonet") return 1.7;
-  if (cardId === "marksman") return 1.72;
-  return 1.85;
+  if (cardId === "ironhide") return 2.05;
+  if (cardId === "mortar") return 2.15;
+  if (cardId === "bayonet") return 2.35;
+  if (cardId === "marksman") return 2.4;
+  return 2.55;
 }
 
 function visHpY(e: Entity): number {
@@ -1326,8 +1326,8 @@ export function drawCardArt(
   ctx.restore();
 
   ctx.save();
-  ctx.translate(w / 2, h * 0.62);
-  ctx.scale(Math.min(w, h) / 3.15, Math.min(w, h) / 3.15);
+  ctx.translate(w / 2, h * 0.64);
+  ctx.scale(Math.min(w, h) / 2.45, Math.min(w, h) / 2.45);
   const fake = fakeEntity(cardId, team, card.color);
   if (card.kind === "spell") {
     if (cardId === "smoke") {
