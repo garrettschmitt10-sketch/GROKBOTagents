@@ -112,7 +112,7 @@ function beginMatch(): void {
   howtoEl.classList.add("hidden");
   endEl.classList.add("hidden");
   renderHand();
-  toast(difficulty === "easy" ? "Dusk Court minds the lanes gently." : "Dusk Court takes the field.");
+  toast(difficulty === "easy" ? "Dusk Court watches the sky-lane." : "Dusk Court takes the duskglass field.");
 }
 
 function renderHand(): void {
@@ -312,16 +312,16 @@ function paintCrowns(id: string, n: number): void {
 
 function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind"] = "spark"): void {
   for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const sp = 1.5 + Math.random() * 4;
+    const a = (Math.PI * 2 * i) / n + Math.random() * 0.4;
+    const sp = kind === "shard" ? 2.2 + Math.random() * 2.4 : 1.5 + Math.random() * 4;
     particles.push({
       x,
       y,
       vx: Math.cos(a) * sp,
       vy: Math.sin(a) * sp,
-      life: 0.35 + Math.random() * 0.4,
+      life: kind === "shard" ? 0.45 + Math.random() * 0.2 : 0.35 + Math.random() * 0.4,
       maxLife: 0.7,
-      size: 0.08 + Math.random() * 0.12,
+      size: kind === "shard" ? 0.16 + Math.random() * 0.1 : 0.08 + Math.random() * 0.12,
       color,
       kind,
     });
@@ -330,8 +330,11 @@ function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind
 
 function handleEvents(events: MatchEvent[]): void {
   for (const ev of events) {
-    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#3ee0c5" : "#ff6b7a", 10, "ring");
-    if (ev.type === "death") burst(ev.x, ev.y, "#ffd27a", 16, "burst");
+    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#5cf6d5" : "#ff6b9a", 14, "ring");
+    if (ev.type === "death") {
+      burst(ev.x, ev.y, "#f4d78a", 6, "shard");
+      burst(ev.x, ev.y, "#fff6d4", 8, "spark");
+    }
     if (ev.type === "hit") {
       floaters.push({
         x: ev.x,
@@ -346,9 +349,9 @@ function handleEvents(events: MatchEvent[]): void {
     }
     if (ev.type === "spell") {
       sfx.spell(ev.cardId === "frostbind" ? "frostbind" : "riftburst");
-      burst(ev.x, ev.y, ev.cardId === "frostbind" ? "#8ee7ff" : "#ff5ad5", 22, "burst");
+      burst(ev.x, ev.y, ev.cardId === "frostbind" ? "#8ee7ff" : "#ff5ad5", 10, "spark");
     }
-    if (ev.type === "freeze") burst(ev.x, ev.y, "#d7f6ff", 18, "frost");
+    if (ev.type === "freeze") burst(ev.x, ev.y, "#d7f6ff", 8, "frost");
     if (ev.type === "tower-hit") {
       shake = Math.max(shake, 0.14);
       const tnow = performance.now();
@@ -380,20 +383,20 @@ function showEnd(winner: "player" | "bot" | "draw"): void {
   if (winner === "player") {
     endTitle.textContent = "Victory";
     endTitle.classList.add("win");
-    endEyebrow.textContent = "Aurora Keep stands";
-    endSub.textContent = "The Dusk Court Crownspire is shattered.";
+    endEyebrow.textContent = "Aurora Keep holds the courts";
+    endSub.textContent = "The Dusk Court Crownspire shatters into starlight.";
     sfx.win();
   } else if (winner === "bot") {
     endTitle.textContent = "Defeat";
     endTitle.classList.add("lose");
-    endEyebrow.textContent = "The rift favors dusk";
+    endEyebrow.textContent = "Duskglass claims the lane";
     endSub.textContent = "Your Crownspire has fallen. Gather Aether and try again.";
     sfx.lose();
   } else {
     endTitle.textContent = "Stalemate";
     endTitle.classList.add("draw");
-    endEyebrow.textContent = "The river holds";
-    endSub.textContent = "Neither keep claimed the field.";
+    endEyebrow.textContent = "The starlight river holds";
+    endSub.textContent = "Neither keep claimed the duskglass courts.";
   }
   endScore.innerHTML = `<span>You ${match.player.crowns}</span><span>Dusk ${match.bot.crowns}</span>`;
 }
@@ -425,10 +428,28 @@ function drawParticles(): void {
     ctx.fillStyle = p.color;
     if (p.kind === "ring") {
       ctx.strokeStyle = p.color;
-      ctx.lineWidth = 0.06;
+      ctx.lineWidth = 0.07;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, (1 - a) * 0.8 + 0.2, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, (1 - a) * 1.1 + 0.18, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (p.kind === "frost") {
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 0.05;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.vx * 0.04, p.y + p.vy * 0.04);
+      ctx.stroke();
+    } else if (p.kind === "shard") {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.beginPath();
+      ctx.moveTo(p.size * 2.2, 0);
+      ctx.lineTo(-p.size, p.size * 1.1);
+      ctx.lineTo(-p.size * 0.4, -p.size * 1.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     } else {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -485,7 +506,7 @@ function frame(now: number): void {
       ctx.globalAlpha = 0.55;
       ctx.beginPath();
       ctx.arc(ghost.x, ghost.y, 0.5 * cam.s, 0, Math.PI * 2);
-      ctx.fillStyle = hover.valid ? "#3ee0c5" : "#ff6b7a";
+      ctx.fillStyle = hover.valid ? "#5cf6d5" : "#ff6b9a";
       ctx.fill();
       ctx.globalAlpha = 1;
     }
