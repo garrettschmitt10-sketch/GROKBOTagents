@@ -79,8 +79,8 @@ export function steerToward(
 
   const cx = nearestBridgeCx(unit.x, tx);
   const approachY = us === "south" ? RIVER_BOT + 0.12 : RIVER_TOP - 0.12;
-  const closeToBridge = Math.abs(unit.x - cx) < 0.55 && Math.abs(unit.y - approachY) < 0.8;
-  if (!closeToBridge && Math.abs(unit.x - cx) > 0.35) {
+  const closeToBridge = Math.abs(unit.x - cx) < 0.8 && Math.abs(unit.y - approachY) < 1.05;
+  if (!closeToBridge && Math.abs(unit.x - cx) > 0.28) {
     return { x: cx, y: approachY };
   }
   const farY = us === "south" ? RIVER_TOP - 0.35 : RIVER_BOT + 0.35;
@@ -126,8 +126,8 @@ export function deployAllowed(
   const myBank = ownBank(team);
   const b = bankOf(y);
   if (b === myBank) {
-    if (team === 0 && y > ARENA_H - 1.15) return false;
-    if (team === 1 && y < 1.15) return false;
+    if (team === 0 && y > ARENA_H - 0.95) return false;
+    if (team === 1 && y < 0.95) return false;
     return true;
   }
 
@@ -138,6 +138,71 @@ export function deployAllowed(
   if (!open) return false;
   if (team === 0) return y >= 6.4;
   return y <= ARENA_H - 6.4;
+}
+
+/** Pull an almost-legal drop onto the nearest valid tile so deploy feels forgiving. */
+export function snapDeploy(
+  team: Team,
+  cardId: string,
+  x: number,
+  y: number,
+  unlock: Unlock,
+): { x: number; y: number } | null {
+  if (deployAllowed(team, cardId, x, y, unlock)) return { x, y };
+
+  const card = cardById(cardId);
+  const guesses: { x: number; y: number }[] = [];
+
+  let gx = clamp(x, 0.55, ARENA_W - 0.55);
+  let gy = clamp(y, 0.55, ARENA_H - 0.55);
+
+  if (card.kind === "spell") return { x: gx, y: gy };
+
+  if (inRiver(gx, gy) || bankOf(gy) === "river") {
+    const toSouth = Math.abs(gy - RIVER_BOT);
+    const toNorth = Math.abs(gy - RIVER_TOP);
+    gy = toSouth <= toNorth ? RIVER_BOT + 0.35 : RIVER_TOP - 0.35;
+  }
+
+  if (team === 0 && gy > ARENA_H - 0.95) gy = ARENA_H - 1.15;
+  if (team === 1 && gy < 0.95) gy = 1.15;
+
+  const my = ownBank(team);
+  if (bankOf(gy) !== my && bankOf(gy) !== "river") {
+    const laneOpen = (gx < ARENA_W * 0.5 ? unlock.left : unlock.right);
+    if (!laneOpen) gy = team === 0 ? RIVER_BOT + 0.55 : RIVER_TOP - 0.55;
+  }
+
+  guesses.push({ x: gx, y: gy });
+  guesses.push({ x: clamp(x, 1.1, ARENA_W - 1.1), y: team === 0 ? clamp(y, RIVER_BOT + 0.4, ARENA_H - 1.2) : clamp(y, 1.2, RIVER_TOP - 0.4) });
+
+  for (const b of BRIDGES) {
+    guesses.push({ x: b.cx, y: team === 0 ? RIVER_BOT + 0.45 : RIVER_TOP - 0.45 });
+  }
+
+  const radii = [0.35, 0.7, 1.1, 1.6, 2.1];
+  const steps = 10;
+  for (const r of radii) {
+    for (let i = 0; i < steps; i++) {
+      const a = (Math.PI * 2 * i) / steps;
+      guesses.push({ x: gx + Math.cos(a) * r, y: gy + Math.sin(a) * r });
+    }
+  }
+
+  let best: { x: number; y: number } | null = null;
+  let bestD = Infinity;
+  for (const g of guesses) {
+    const px = clamp(g.x, 0.5, ARENA_W - 0.5);
+    const py = clamp(g.y, 0.5, ARENA_H - 0.5);
+    if (!deployAllowed(team, cardId, px, py, unlock)) continue;
+    const d = dist(x, y, px, py);
+    if (d < bestD) {
+      bestD = d;
+      best = { x: px, y: py };
+    }
+  }
+  if (!best || bestD > 2.4) return null;
+  return best;
 }
 
 export function distEntity(a: Entity, b: Entity): number {

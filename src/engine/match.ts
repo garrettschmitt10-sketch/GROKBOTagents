@@ -59,7 +59,7 @@ function towerTemplate(
     team,
     kind: "tower",
     cardId: null,
-    name: isKing ? "Crownspire" : slot === "left" ? "West Lantern" : "East Lantern",
+    name: isKing ? "Strongpoint" : slot === "left" ? "West Bunker" : "East Bunker",
     x,
     y,
     hp,
@@ -83,7 +83,7 @@ function towerTemplate(
     towerSlot: slot,
     active: !isKing,
     dying: 0,
-    color: isKing ? "#f4d27a" : "#d7ecff",
+    color: isKing ? "#c9a227" : team === 0 ? "#6fa8dc" : "#c4a35a",
   };
 }
 
@@ -138,7 +138,7 @@ export class Match {
     }
     this.entities.push(...towers);
     this.botLane = this.rng.next() < 0.5 ? 0 : 1;
-    this.botDelay = this.difficulty === "easy" ? 1.4 : 0.7;
+    this.botDelay = this.difficulty === "easy" ? 0.95 : 0.4;
   }
 
   side(team: Team): SideState {
@@ -189,8 +189,8 @@ export class Match {
 
   update(dt: number): void {
     if (this.ended) return;
-    this.acc += Math.min(dt, 0.12);
-    const step = 1 / 30;
+    this.acc += Math.min(dt, 0.08);
+    const step = 1 / 60;
     while (this.acc >= step && !this.ended) {
       this.tick(step);
       this.acc -= step;
@@ -297,7 +297,7 @@ export class Match {
       hitSpeed: card.hitSpeed,
       splash: card.splash,
       sight: card.sight,
-      attackCd: 0.12,
+      attackCd: 0.04,
       targetId: null,
       frozenUntil: 0,
       deployUntil: this.now + card.deployTime,
@@ -424,7 +424,22 @@ export class Match {
   private acquire(e: Entity): Entity | null {
     if (e.targetId != null) {
       const cur = this.entities.find((o) => o.id === e.targetId && o.hp > 0 && o.dying <= 0);
-      if (cur && distEntity(e, cur) <= e.sight + 1.8) return cur;
+      if (cur && distEntity(e, cur) <= e.sight + 1.1) {
+        let steal: Entity | null = null;
+        let stealD = distEntity(e, cur) - 1.05;
+        for (const o of this.entities) {
+          if (o.team === e.team || o.hp <= 0 || o.dying > 0) continue;
+          if (o.kind !== "troop" && o.kind !== "building") continue;
+          const d = distEntity(e, o);
+          if (d <= e.sight + o.radius && d < stealD) {
+            stealD = d;
+            steal = o;
+          }
+        }
+        if (!steal) return cur;
+        e.targetId = steal.id;
+        return steal;
+      }
     }
     let best: Entity | null = null;
     let bestD = Infinity;
@@ -474,10 +489,10 @@ export class Match {
         x: e.x + Math.cos(e.facing) * e.radius * 0.8,
         y: e.y + Math.sin(e.facing) * e.radius * 0.8,
         targetId: target.id,
-        speed: e.kind === "tower" ? 11 : e.splash > 0 ? 6.5 : 9.5,
+        speed: e.kind === "tower" ? 13.5 : e.splash > 0 ? 8.2 : 11.5,
         damage: e.damage,
         splash: e.splash,
-        color: e.kind === "tower" ? "#fff1a8" : e.color,
+        color: e.kind === "tower" ? "#c9a227" : e.color,
         homing: true,
         tx: target.x,
         ty: target.y,
@@ -661,13 +676,13 @@ export class Match {
       this.botIntent = null;
       if (!ok) this.botEvalAt = 0;
     }
-    const interval = this.difficulty === "easy" ? 0.48 : 0.22;
+    const interval = this.difficulty === "easy" ? 0.38 : 0.16;
     if (now < this.botEvalAt) return;
     this.botEvalAt = now + interval;
     if (this.botIntent) return;
     const intent = this.chooseBotPlay() ?? this.spendFallback();
     if (!intent) return;
-    const react = this.difficulty === "easy" ? this.rng.range(0.55, 1.15) : this.rng.range(0.18, 0.42);
+    const react = this.difficulty === "easy" ? this.rng.range(0.32, 0.72) : this.rng.range(0.08, 0.22);
     this.botIntent = { ...intent, at: now + react };
   }
 
@@ -682,8 +697,8 @@ export class Match {
     const ours = this.living().filter((e) => e.team === 1 && e.kind !== "tower" && e.kind !== "spell");
 
     const threatScore = (t: Entity): number => {
-      const lantern = this.closestFriendlyTower(1, t.x, t.y);
-      const prox = lantern ? 1 / (0.6 + distEntity(t, lantern)) : 0.05;
+      const bunker = this.closestFriendlyTower(1, t.x, t.y);
+      const prox = bunker ? 1 / (0.6 + distEntity(t, bunker)) : 0.05;
       const dps = t.damage / Math.max(0.4, t.hitSpeed);
       const tank = t.maxHp / 400;
       return (dps * 1.2 + tank * 8 + (t.kind === "building" ? 6 : 0)) * prox * 18;
@@ -718,7 +733,7 @@ export class Match {
       }
 
       const tank = ours.find((u) => u.cardId === "ironhide" || u.maxHp > 900);
-      if (tank && (card.role.includes("ranged") || card.role.includes("splash") || card.id === "ashblade")) {
+      if (tank && (card.role.includes("ranged") || card.role.includes("splash") || card.id === "bayonet")) {
         const behind = clamp(tank.y - 1.6, 1.6, 14.8);
         const x = clamp(tank.x + this.rng.range(-0.4, 0.4), 1.2, ARENA_W - 1.2);
         if (this.legalPlay(1, id, x, behind)) {
@@ -731,7 +746,7 @@ export class Match {
         const place = this.pushPlace(id);
         if (place) {
           const pref =
-            card.id === "ironhide" ? 28 : card.id === "boltbow" || card.id === "cinderpot" ? 16 : card.id === "ashblade" ? 14 : card.id === "sparklets" ? 11 : 9;
+            card.id === "ironhide" ? 28 : card.id === "marksman" || card.id === "mortar" ? 16 : card.id === "bayonet" ? 14 : card.id === "scouts" ? 11 : 9;
           cands.push({
             index: i,
             ...place,
@@ -763,7 +778,7 @@ export class Match {
   }
 
   private spendFallback(): { index: number; x: number; y: number } | null {
-    if (this.bot.elixir < 6.4) return null;
+    if (this.bot.elixir < 5.7) return null;
     let bestI = -1;
     let bestCost = 99;
     for (let i = 0; i < HAND_SIZE; i++) {
@@ -797,15 +812,15 @@ export class Match {
 
   private counterWeight(cardId: string, threat: Entity): number {
     const c = cardById(cardId);
-    const swarm = (threat.cardId === "sparklets" || threat.radius < 0.32) && threat.kind === "troop";
+    const swarm = (threat.cardId === "scouts" || threat.radius < 0.32) && threat.kind === "troop";
     const tanky = threat.maxHp >= 900;
-    if (c.id === "cinderpot" || c.id === "riftburst") return swarm ? 2.4 : tanky ? 0.7 : 1.2;
-    if (c.id === "sparklets") return tanky ? 2.1 : swarm ? 0.4 : 1.0;
-    if (c.id === "wardspire") return tanky ? 2.3 : 1.3;
-    if (c.id === "ashblade") return threat.range > 2 ? 1.8 : 1.1;
-    if (c.id === "frostbind") return tanky || threat.kind === "building" ? 1.6 : 0.9;
+    if (c.id === "mortar" || c.id === "barrage") return swarm ? 2.4 : tanky ? 0.7 : 1.2;
+    if (c.id === "scouts") return tanky ? 2.1 : swarm ? 0.4 : 1.0;
+    if (c.id === "pillbox") return tanky ? 2.3 : 1.3;
+    if (c.id === "bayonet") return threat.range > 2 ? 1.8 : 1.1;
+    if (c.id === "smoke") return tanky || threat.kind === "building" ? 1.6 : 0.9;
     if (c.id === "ironhide") return 0.7;
-    if (c.id === "boltbow") return swarm ? 0.5 : 1.15;
+    if (c.id === "marksman") return swarm ? 0.5 : 1.15;
     return 1;
   }
 
@@ -871,7 +886,7 @@ export class Match {
           if (o.kind !== "tower" && o.y > 15) score += 6;
         }
       }
-      if (card.id === "frostbind" && e.maxHp > 800) score += 10;
+      if (card.id === "smoke" && e.maxHp > 800) score += 10;
       if (!best || score > best.score) best = { x: e.x, y: e.y, score };
     }
     return best;

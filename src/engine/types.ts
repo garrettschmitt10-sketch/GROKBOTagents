@@ -116,7 +116,7 @@ export interface Particle {
   maxLife: number;
   size: number;
   color: string;
-  kind: "spark" | "ring" | "burst" | "frost" | "shard";
+  kind: "spark" | "ring" | "burst" | "smoke" | "debris";
 }
 
 export type MatchEvent =
@@ -163,5 +163,5 @@ export function lerp(a: number, b: number, t: number): number {
 }
 
 export function teamName(team: Team): string {
-  return team === 0 ? "Aurora Keep" : "Dusk Court";
+  return team === 0 ? "Riverwatch" : "Dustfront";
 }
