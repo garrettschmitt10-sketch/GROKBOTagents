@@ -116,7 +116,7 @@ export interface Particle {
   maxLife: number;
   size: number;
   color: string;
-  kind: "spark" | "ring" | "burst" | "frost";
+  kind: "spark" | "ring" | "burst" | "frost" | "shard";
 }
 
 export type MatchEvent =
