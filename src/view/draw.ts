@@ -111,49 +111,49 @@ function drawOuterFrame(ctx: CanvasRenderingContext2D): void {
 
 function drawMudFloor(ctx: CanvasRenderingContext2D, t: number): void {
   const field = ctx.createLinearGradient(0, 0, 0, ARENA_H);
-  field.addColorStop(0, "#2a2418");
-  field.addColorStop(0.12, "#1e221c");
-  field.addColorStop(0.48, "#1a1c16");
-  field.addColorStop(0.52, "#22261e");
-  field.addColorStop(1, "#1a1c16");
+  field.addColorStop(0, "#323428");
+  field.addColorStop(0.14, "#2a2e24");
+  field.addColorStop(0.48, "#23261e");
+  field.addColorStop(0.52, "#2c2a20");
+  field.addColorStop(1, "#25281f");
   ctx.fillStyle = field;
   ctx.fillRect(0, 0, ARENA_W, ARENA_H);
 
-  const dusk = ctx.createLinearGradient(0, 0, 0, 5.4);
-  dusk.addColorStop(0, "rgba(42, 46, 58, 0.55)");
+  const dusk = ctx.createLinearGradient(0, 0, 0, 5.8);
+  dusk.addColorStop(0, "rgba(48, 50, 58, 0.62)");
   dusk.addColorStop(1, "rgba(26, 28, 22, 0)");
   ctx.fillStyle = dusk;
-  ctx.fillRect(0, 0, ARENA_W, 5.4);
+  ctx.fillRect(0, 0, ARENA_W, 5.8);
 
-  ctx.fillStyle = "rgba(180,180,170,0.12)";
+  ctx.fillStyle = "rgba(180,180,170,0.16)";
   for (let i = 0; i < 5; i++) {
     const sx = 1.4 + i * 3.4;
-    const sy = 1.1 + Math.sin(t * 0.12 + i) * 0.15;
+    const sy = 1.15 + Math.sin(t * 0.12 + i) * 0.12;
     ctx.beginPath();
-    ctx.ellipse(sx, sy, 2.1, 0.55, -0.12, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy, 2.2, 0.58, -0.1, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.strokeStyle = "rgba(40, 44, 34, 0.55)";
-  ctx.lineWidth = 0.045;
-  for (let i = 0; i < 9; i++) {
-    const y = 4.2 + i * 2.6;
-    if (y > RIVER_TOP - 0.6 && y < RIVER_BOT + 0.6) continue;
+  ctx.strokeStyle = "rgba(18, 20, 14, 0.55)";
+  ctx.lineWidth = 0.07;
+  for (let i = 0; i < 11; i++) {
+    const y = 3.6 + i * 2.35;
+    if (y > RIVER_TOP - 0.7 && y < RIVER_BOT + 0.7) continue;
     ctx.beginPath();
-    ctx.moveTo(0.4, y);
-    for (let x = 0.4; x < ARENA_W; x += 0.55) {
-      ctx.lineTo(x, y + ((x * 7 + i * 13) % 5) * 0.04 - 0.08);
+    ctx.moveTo(0.3, y);
+    for (let x = 0.3; x < ARENA_W; x += 0.45) {
+      ctx.lineTo(x, y + ((x * 7 + i * 13) % 5) * 0.05 - 0.1);
     }
     ctx.stroke();
   }
 
-  ctx.fillStyle = "rgba(12, 14, 10, 0.35)";
-  for (let i = 0; i < 28; i++) {
-    const sx = 0.6 + ((i * 53) % 170) / 10;
-    const sy = 0.8 + ((i * 97) % 300) / 10;
+  ctx.fillStyle = "rgba(12, 14, 10, 0.42)";
+  for (let i = 0; i < 36; i++) {
+    const sx = 0.5 + ((i * 53) % 172) / 10;
+    const sy = 0.7 + ((i * 97) % 304) / 10;
     if (sy > RIVER_TOP - 0.2 && sy < RIVER_BOT + 0.2) continue;
     ctx.beginPath();
-    ctx.ellipse(sx, sy, 0.18 + (i % 3) * 0.06, 0.1 + (i % 2) * 0.04, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy, 0.22 + (i % 3) * 0.07, 0.12 + (i % 2) * 0.05, 0.2, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -161,10 +161,37 @@ function drawMudFloor(ctx: CanvasRenderingContext2D, t: number): void {
     for (let col = 0; col < ARENA_W; col++) {
       if ((row + col) % 3) continue;
       const north = row < RIVER_TOP;
-      ctx.fillStyle = north ? "rgba(196, 163, 90, 0.045)" : "rgba(111, 168, 220, 0.045)";
+      ctx.fillStyle = north ? "rgba(196, 163, 90, 0.06)" : "rgba(111, 168, 220, 0.055)";
       ctx.fillRect(col, row, 1, 1);
     }
   }
+
+  drawWire(ctx, RIVER_TOP - 0.55);
+  drawWire(ctx, RIVER_BOT + 0.55);
+}
+
+function drawWire(ctx: CanvasRenderingContext2D, y: number): void {
+  ctx.save();
+  ctx.strokeStyle = "rgba(90, 88, 78, 0.7)";
+  ctx.lineWidth = 0.045;
+  ctx.beginPath();
+  ctx.moveTo(0.2, y);
+  for (let x = 0.2; x < ARENA_W; x += 0.55) {
+    ctx.lineTo(x + 0.22, y - 0.16);
+    ctx.lineTo(x + 0.55, y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(60, 58, 48, 0.55)";
+  ctx.lineWidth = 0.03;
+  for (let x = 0.4; x < ARENA_W; x += 1.1) {
+    ctx.beginPath();
+    ctx.moveTo(x, y - 0.18);
+    ctx.lineTo(x + 0.12, y + 0.1);
+    ctx.moveTo(x + 0.08, y - 0.16);
+    ctx.lineTo(x - 0.06, y + 0.08);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawLaneMarks(ctx: CanvasRenderingContext2D): void {
@@ -377,86 +404,77 @@ function drawTower(ctx: CanvasRenderingContext2D, e: Entity): void {
   ctx.translate(e.x, e.y);
   if (e.dying > 0) ctx.globalAlpha = Math.max(0, e.dying);
 
-  const bodyH = king ? 2.35 : 1.28;
-  const bodyW = king ? 2.35 : 1.42;
+  const bodyW = king ? 2.55 : 1.62;
+  const wallH = king ? 1.35 : 0.82;
 
   ctx.beginPath();
-  ctx.ellipse(0, 0.52, bodyW * 0.72, king ? 0.38 : 0.26, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  ctx.ellipse(0, 0.58, bodyW * 0.78, king ? 0.42 : 0.3, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
   ctx.fill();
 
-  const sand = ctx.createLinearGradient(0, -bodyH, 0, 0.5);
-  sand.addColorStop(0, "#cbb98a");
-  sand.addColorStop(0.4, teamMid(e.team));
+  const sand = ctx.createLinearGradient(0, -wallH, 0, 0.55);
+  sand.addColorStop(0, "#d4c49a");
+  sand.addColorStop(0.35, teamMid(e.team));
   sand.addColorStop(1, teamDeep(e.team));
 
-  roundRect(ctx, -bodyW * 0.5, -bodyH * 0.15, bodyW, bodyH * 0.55 + 0.5, 0.1);
+  roundRect(ctx, -bodyW * 0.5, -wallH * 0.55, bodyW, wallH + 0.55, 0.1);
   ctx.fillStyle = sand;
   ctx.fill();
   ctx.strokeStyle = glow;
-  ctx.lineWidth = king ? 0.09 : 0.07;
+  ctx.lineWidth = king ? 0.1 : 0.08;
   ctx.stroke();
 
-  ctx.fillStyle = "#6a5a3a";
-  const bags = king ? 7 : 5;
-  for (let i = 0; i < bags; i++) {
-    const bx = -bodyW * 0.46 + (i * bodyW * 0.92) / bags;
-    roundRect(ctx, bx, 0.28, bodyW / bags - 0.04, 0.22, 0.05);
-    ctx.fill();
+  ctx.fillStyle = "#6e5c38";
+  const rows = king ? 3 : 2;
+  const bags = king ? 8 : 5;
+  for (let r = 0; r < rows; r++) {
+    for (let i = 0; i < bags - (r % 2); i++) {
+      const bw = bodyW / bags;
+      const bx = -bodyW * 0.48 + i * bw + (r % 2 ? bw * 0.35 : 0);
+      const by = 0.18 - r * 0.2;
+      roundRect(ctx, bx, by, bw - 0.04, 0.18, 0.05);
+      ctx.fill();
+    }
   }
 
   ctx.fillStyle = teamDeep(e.team);
-  roundRect(ctx, -bodyW * 0.16, king ? -0.18 : -0.08, bodyW * 0.32, king ? 0.28 : 0.2, 0.03);
+  roundRect(ctx, -bodyW * 0.18, king ? -0.42 : -0.22, bodyW * 0.36, king ? 0.28 : 0.2, 0.03);
   ctx.fill();
   ctx.fillStyle = e.active ? glow : "rgba(0,0,0,0.45)";
   ctx.globalAlpha = e.active ? 0.95 : 0.28;
-  ctx.fillRect(-bodyW * 0.12, king ? -0.1 : -0.02, bodyW * 0.24, 0.07);
+  ctx.fillRect(-bodyW * 0.14, king ? -0.34 : -0.16, bodyW * 0.28, 0.08);
   ctx.globalAlpha = 1;
 
-  if (king) {
-    ctx.strokeStyle = "#8a8070";
-    ctx.lineWidth = 0.08;
-    ctx.beginPath();
-    ctx.moveTo(0.42, 0.1);
-    ctx.lineTo(0.42, -bodyH * 0.85);
-    ctx.stroke();
-    ctx.strokeStyle = glow;
-    ctx.lineWidth = 0.035;
-    ctx.beginPath();
-    ctx.moveTo(0.42, -bodyH * 0.85);
-    ctx.lineTo(0.72, -bodyH * 0.55);
-    ctx.lineTo(0.42, -bodyH * 0.42);
-    ctx.stroke();
+  const mastX = king ? 0.55 : 0.36;
+  const mastTop = king ? -1.55 : -0.92;
+  ctx.strokeStyle = "#8a8070";
+  ctx.lineWidth = king ? 0.09 : 0.07;
+  ctx.beginPath();
+  ctx.moveTo(mastX, -0.1);
+  ctx.lineTo(mastX, mastTop);
+  ctx.stroke();
+  ctx.strokeStyle = glow;
+  ctx.lineWidth = 0.04;
+  ctx.beginPath();
+  ctx.moveTo(mastX, mastTop);
+  ctx.lineTo(mastX + 0.42, mastTop + 0.38);
+  ctx.lineTo(mastX, mastTop + 0.52);
+  ctx.stroke();
 
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.moveTo(-0.02, -bodyH * 0.22);
-    ctx.lineTo(0.55, -bodyH * 0.38);
-    ctx.lineTo(0.55, -bodyH * 0.08);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = BRASS;
-    ctx.lineWidth = 0.04;
-    ctx.stroke();
-  } else {
-    ctx.strokeStyle = "#8a8070";
-    ctx.lineWidth = 0.06;
-    ctx.beginPath();
-    ctx.moveTo(0.28, 0.05);
-    ctx.lineTo(0.28, -0.72);
-    ctx.stroke();
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.moveTo(0.28, -0.72);
-    ctx.lineTo(0.52, -0.58);
-    ctx.lineTo(0.28, -0.48);
-    ctx.closePath();
-    ctx.fill();
-  }
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.moveTo(-0.04, king ? -0.58 : -0.36);
+  ctx.lineTo(king ? 0.62 : 0.42, king ? -0.82 : -0.52);
+  ctx.lineTo(king ? 0.62 : 0.42, king ? -0.42 : -0.26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = BRASS;
+  ctx.lineWidth = 0.045;
+  ctx.stroke();
 
   if (!e.active && king) {
-    ctx.fillStyle = "rgba(10, 12, 8, 0.38)";
-    roundRect(ctx, -bodyW * 0.5, -bodyH * 0.15, bodyW, bodyH * 0.55 + 0.5, 0.1);
+    ctx.fillStyle = "rgba(10, 12, 8, 0.4)";
+    roundRect(ctx, -bodyW * 0.5, -wallH * 0.55, bodyW, wallH + 0.55, 0.1);
     ctx.fill();
   }
   ctx.restore();
@@ -637,60 +655,66 @@ function helmet(ctx: CanvasRenderingContext2D, e: Entity, x: number, y: number, 
 function drawScout(ctx: CanvasRenderingContext2D, e: Entity): void {
   rimFill(ctx, e, () => {
     ctx.beginPath();
-    ctx.ellipse(0, 0.12, 0.2, 0.26, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0.16, 0.18, 0.24, 0, 0, Math.PI * 2);
   });
-  helmet(ctx, e, 0, -0.12, 1.05);
+  helmet(ctx, e, 0, -0.14, 1.15);
   ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.05;
+  ctx.lineWidth = 0.055;
   ctx.beginPath();
-  ctx.moveTo(0.08, 0.02);
-  ctx.lineTo(0.28, -0.28);
+  ctx.moveTo(0.1, 0.04);
+  ctx.lineTo(0.32, -0.22);
   ctx.stroke();
 }
 
 function drawBayonet(ctx: CanvasRenderingContext2D, e: Entity): void {
-  ctx.fillStyle = "#d8d2c4";
+  ctx.fillStyle = "#e8e0cc";
   ctx.beginPath();
-  ctx.moveTo(0.02, -1.05);
-  ctx.lineTo(0.1, -0.22);
-  ctx.lineTo(-0.04, -0.18);
+  ctx.moveTo(0.02, -1.18);
+  ctx.lineTo(0.14, -0.18);
+  ctx.lineTo(-0.08, -0.14);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = BRASS;
-  ctx.lineWidth = 0.05;
+  ctx.lineWidth = 0.055;
   ctx.stroke();
   rimFill(ctx, e, () => {
     ctx.beginPath();
-    ctx.moveTo(-0.28, 0.48);
-    ctx.lineTo(-0.22, -0.08);
-    ctx.lineTo(0.22, -0.08);
-    ctx.lineTo(0.3, 0.48);
+    ctx.moveTo(-0.32, 0.52);
+    ctx.lineTo(-0.24, -0.12);
+    ctx.lineTo(0.24, -0.12);
+    ctx.lineTo(0.34, 0.52);
     ctx.closePath();
   });
-  helmet(ctx, e, 0, -0.22, 1.25);
+  helmet(ctx, e, 0, -0.26, 1.4);
 }
 
 function drawMarksman(ctx: CanvasRenderingContext2D, e: Entity): void {
   rimFill(ctx, e, () => {
     ctx.beginPath();
-    ctx.ellipse(0.02, 0.18, 0.28, 0.2, -0.35, 0, Math.PI * 2);
+    ctx.ellipse(-0.06, 0.22, 0.32, 0.18, -0.4, 0, Math.PI * 2);
   });
-  helmet(ctx, e, -0.06, 0.0, 0.95);
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.09;
+  helmet(ctx, e, -0.18, 0.02, 1.05);
+  ctx.strokeStyle = teamDeep(e.team);
+  ctx.lineWidth = 0.11;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-0.05, 0.08);
-  ctx.lineTo(0.02, -0.72);
+  ctx.moveTo(-0.12, 0.12);
+  ctx.lineTo(0.78, -0.08);
   ctx.stroke();
-  ctx.strokeStyle = BRASS;
+  ctx.strokeStyle = teamGlow(e.team);
   ctx.lineWidth = 0.05;
   ctx.beginPath();
-  ctx.moveTo(-0.1, -0.52);
-  ctx.lineTo(0.14, -0.52);
+  ctx.moveTo(-0.12, 0.12);
+  ctx.lineTo(0.78, -0.08);
+  ctx.stroke();
+  ctx.strokeStyle = BRASS;
+  ctx.lineWidth = 0.06;
+  ctx.beginPath();
+  ctx.moveTo(0.34, -0.2);
+  ctx.lineTo(0.34, 0.08);
   ctx.stroke();
   ctx.fillStyle = teamGlow(e.team);
-  ctx.fillRect(-0.02, -0.82, 0.06, 0.1);
+  ctx.fillRect(0.7, -0.14, 0.14, 0.08);
 }
 
 function drawIronhide(ctx: CanvasRenderingContext2D, e: Entity): void {
@@ -721,20 +745,31 @@ function drawIronhide(ctx: CanvasRenderingContext2D, e: Entity): void {
 
 function drawMortar(ctx: CanvasRenderingContext2D, e: Entity): void {
   rimFill(ctx, e, () => {
-    roundRect(ctx, -0.42, 0.02, 0.84, 0.48, 0.12);
+    ctx.beginPath();
+    ctx.ellipse(0, 0.28, 0.46, 0.28, 0, 0, Math.PI * 2);
   });
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.14;
+  ctx.strokeStyle = teamDeep(e.team);
+  ctx.lineWidth = 0.2;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(0.05, 0.08);
-  ctx.lineTo(0.38, -0.72);
+  ctx.moveTo(0.02, 0.18);
+  ctx.lineTo(0.48, -0.62);
+  ctx.stroke();
+  ctx.strokeStyle = teamGlow(e.team);
+  ctx.lineWidth = 0.08;
+  ctx.beginPath();
+  ctx.moveTo(0.02, 0.18);
+  ctx.lineTo(0.48, -0.62);
   ctx.stroke();
   ctx.fillStyle = BRASS;
   ctx.beginPath();
-  ctx.arc(0.42, -0.8, 0.08, 0, Math.PI * 2);
+  ctx.arc(0.52, -0.7, 0.1, 0, Math.PI * 2);
   ctx.fill();
-  helmet(ctx, e, -0.18, 0.0, 0.9);
+  ctx.fillStyle = "#e8a040";
+  ctx.beginPath();
+  ctx.arc(0.62, -0.86, 0.06, 0, Math.PI * 2);
+  ctx.fill();
+  helmet(ctx, e, -0.22, 0.08, 0.95);
 }
 
 function drawSpellMarker(ctx: CanvasRenderingContext2D, e: Entity, t: number): void {

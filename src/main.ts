@@ -193,6 +193,10 @@ function denyCard(index: number): void {
   if (now - denyAt < 380) return;
   denyAt = now;
   toast("Need more Supply");
+  elixirFill.parentElement?.classList.remove("denied");
+  void elixirFill.parentElement?.offsetWidth;
+  elixirFill.parentElement?.classList.add("denied");
+  window.setTimeout(() => elixirFill.parentElement?.classList.remove("denied"), 420);
   const btn = handEl.querySelector<HTMLButtonElement>(`.card[data-index="${index}"]`);
   if (!btn) return;
   btn.classList.remove("denied");
