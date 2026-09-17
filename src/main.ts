@@ -5,7 +5,6 @@ import {
   ARENA_H,
   ARENA_W,
   MAX_ELIXIR,
-  clamp,
   type Difficulty,
   type FloatingText,
   type MatchEvent,
@@ -15,11 +14,13 @@ import { Sfx } from "./view/audio";
 import {
   drawArena,
   drawCardArt,
+  drawWorldFx,
   layoutCam,
   screenToWorld,
   worldToScreen,
   type ViewCam,
 } from "./view/draw";
+import { preloadSprites } from "./view/sprites";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!;
 const ctx = canvas.getContext("2d")!;
@@ -47,6 +48,11 @@ const endScore = document.querySelector("#end-score")!;
 const endEyebrow = document.querySelector("#end-eyebrow")!;
 
 elixirPips.innerHTML = Array.from({ length: 10 }, () => "<span></span>").join("");
+preloadSprites().then(() => {
+  lastNextCard = "";
+  lastHudKey = "";
+  if (match) renderHand(true);
+});
 
 let difficulty: Difficulty = "normal";
 let match: Match | null = null;
@@ -404,7 +410,7 @@ function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind
       vy: Math.sin(a) * sp - (kind === "smoke" ? 0.8 : 0),
       life: kind === "smoke" ? 0.55 + Math.random() * 0.25 : 0.32 + Math.random() * 0.32,
       maxLife: 0.7,
-      size: kind === "smoke" ? 0.22 + Math.random() * 0.14 : kind === "debris" ? 0.1 + Math.random() * 0.08 : 0.07 + Math.random() * 0.1,
+      size: kind === "smoke" ? 0.28 + Math.random() * 0.16 : kind === "debris" ? 0.1 + Math.random() * 0.08 : kind === "burst" ? 0.55 + Math.random() * 0.2 : 0.07 + Math.random() * 0.1,
       color,
       kind,
     });
@@ -413,10 +419,10 @@ function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind
 
 function handleEvents(events: MatchEvent[]): void {
   for (const ev of events) {
-    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#6fa8dc" : "#c4a35a", 10, "ring");
+    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#6a7e90" : "#c4b07a", 8, "ring");
     if (ev.type === "death") {
-      burst(ev.x, ev.y, "rgba(180,180,170,0.9)", 8, "smoke");
-      burst(ev.x, ev.y, "#6a5a3a", 5, "debris");
+      burst(ev.x, ev.y, "rgba(140,130,110,0.9)", 6, "smoke");
+      burst(ev.x, ev.y, "#5a4630", 6, "debris");
     }
     if (ev.type === "hit") {
       floaters.push({
@@ -432,7 +438,7 @@ function handleEvents(events: MatchEvent[]): void {
     }
     if (ev.type === "spell") {
       sfx.spell(ev.cardId === "smoke" ? "smoke" : "barrage");
-      burst(ev.x, ev.y, ev.cardId === "smoke" ? "#c8c4b4" : "#d45a20", 10, ev.cardId === "smoke" ? "smoke" : "spark");
+      burst(ev.x, ev.y, ev.cardId === "smoke" ? "#9a9080" : "#8a4a20", 8, ev.cardId === "smoke" ? "smoke" : "burst");
     }
     if (ev.type === "freeze") burst(ev.x, ev.y, "#c8c4b4", 8, "smoke");
     if (ev.type === "tower-hit") {
@@ -506,44 +512,7 @@ function tickParticles(dt: number): void {
 }
 
 function drawParticles(): void {
-  ctx.save();
-  ctx.translate(cam.x, cam.y);
-  ctx.scale(cam.s, cam.s);
-  for (const p of particles) {
-    const a = clamp(p.life / p.maxLife, 0, 1);
-    ctx.globalAlpha = a;
-    ctx.fillStyle = p.color;
-    if (p.kind === "ring") {
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 0.07;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, (1 - a) * 1.0 + 0.16, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (p.kind === "smoke") {
-      ctx.fillStyle = "rgba(180,180,170,0.55)";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (p.kind === "debris") {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(Math.atan2(p.vy, p.vx));
-      ctx.fillRect(-p.size, -p.size * 0.4, p.size * 2, p.size * 0.8);
-      ctx.restore();
-    } else {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  ctx.textAlign = "center";
-  ctx.font = "0.55px Barlow, sans-serif";
-  for (const f of floaters) {
-    ctx.globalAlpha = clamp(f.life / f.maxLife, 0, 1);
-    ctx.fillStyle = f.color;
-    ctx.fillText(f.text, f.x, f.y);
-  }
-  ctx.restore();
+  drawWorldFx(ctx, cam, particles, floaters);
 }
 
 function drawIdleArena(t: number): void {
