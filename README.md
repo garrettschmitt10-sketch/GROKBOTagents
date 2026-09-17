@@ -1,6 +1,6 @@
 # Iron River Front
 
-A vertical-arena real-time card duel you can play in the browser. You command **Riverwatch** against a **Dustfront** bot across a flooded no-man’s-land split by a muddy river and two timber bridges.
+A vertical-arena real-time card duel you can play in the browser. You command **Riverwatch** against a **Dustfront** bot across a flooded no-man’s-land split by a muddy river and two timber bridges. Units and strongpoints are original painted sprites under late-afternoon sun.
 
 Spend Supply, drop your squad, and take the rival Strongpoint before the clock runs out.
 
