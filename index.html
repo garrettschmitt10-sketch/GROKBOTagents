@@ -6,13 +6,13 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#050812" />
-    <title>Aetherlane — Duskglass Courts</title>
+    <meta name="theme-color" content="#1a1c16" />
+    <title>Iron River Front</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Outfit:wght@500;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Oswald:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/style.css" />
@@ -21,24 +21,24 @@
     <div id="app">
       <div id="stage">
         <header id="topbar">
-          <div class="crowns" id="enemy-crowns" aria-label="Opponent crowns">
+          <div class="crowns" id="enemy-crowns" aria-label="Opponent objectives">
             <span class="crown" data-i="0"></span>
             <span class="crown" data-i="1"></span>
             <span class="crown" data-i="2"></span>
           </div>
           <div id="timer-wrap">
-            <div id="timer-label">Sky-lane</div>
+            <div id="timer-label">Front</div>
             <div id="timer">3:00</div>
-            <div id="mode-chip">Single Aether</div>
+            <div id="mode-chip">Single Supply</div>
           </div>
-          <div class="crowns player" id="player-crowns" aria-label="Your crowns">
+          <div class="crowns player" id="player-crowns" aria-label="Your objectives">
             <span class="crown" data-i="0"></span>
             <span class="crown" data-i="1"></span>
             <span class="crown" data-i="2"></span>
           </div>
         </header>
 
-        <canvas id="arena" width="540" height="960" aria-label="Aetherlane duskglass arena"></canvas>
+        <canvas id="arena" width="540" height="960" aria-label="Iron River Front arena"></canvas>
 
         <div id="toasts" aria-live="polite"></div>
 
@@ -61,20 +61,20 @@
       <div id="menu" class="overlay">
         <div class="panel hero">
           <div class="sigil" aria-hidden="true"></div>
-          <p class="eyebrow">Duskglass Courts</p>
-          <h1>AETHERLANE</h1>
+          <p class="eyebrow">Riverwatch · Dustfront</p>
+          <h1>IRON RIVER</h1>
           <p class="tagline">
-            Two crystal keeps face across a river of starlight. Spend Aether, drop your
-            court, and shatter the rival Crownspire before the sky-lane closes.
+            Riverwatch and Dustfront duel across a flooded crossing. Spend Supply, drop
+            your squad, and take the rival Strongpoint before the clock runs out.
           </p>
           <div class="diff-row">
-            <span>Bot mind</span>
+            <span>Opposition</span>
             <div class="toggle" id="diff-toggle" role="group" aria-label="Difficulty">
               <button type="button" data-diff="easy" class="diff-btn">Easy</button>
               <button type="button" data-diff="normal" class="diff-btn active">Normal</button>
             </div>
           </div>
-          <button type="button" id="start-btn" class="primary">Enter the Courts</button>
+          <button type="button" id="start-btn" class="primary">Take the Crossing</button>
           <button type="button" id="howto-btn" class="ghost">How to play</button>
         </div>
       </div>
@@ -83,13 +83,13 @@
         <div class="panel">
           <h2>How to play</h2>
           <ul class="rules">
-            <li>You command Aurora Keep against the Dusk Court on a vertical duskglass arena.</li>
-            <li>Aether regenerates over time (max 10). Cards cost Aether to deploy.</li>
+            <li>You command Riverwatch against Dustfront on a vertical river-crossing arena.</li>
+            <li>Supply regenerates over time (max 10). Cards cost Supply to deploy.</li>
             <li>Hold 4 cards. Play one and the next from your 8-card deck slides in.</li>
-            <li>Tap a card, then tap your half of the arena — or drag the card onto the field.</li>
-            <li>Spells can be aimed anywhere. Troops and wards must land on legal ground.</li>
-            <li>Destroy the enemy Crownspire to win, or lead in lanterns when time expires.</li>
-            <li>Keys 1–4 select cards. Esc cancels. Same Aether rules for you and the bot.</li>
+            <li>Tap a card, then tap your half of the arena — or drag the card onto the field. Drops snap to legal ground. Esc or drag off the field cancels. Tap a selected card again to deselect.</li>
+            <li>Spells can be aimed anywhere. Troops and pillboxes must land on legal ground.</li>
+            <li>Destroy the enemy Strongpoint to win, or lead in bunker takedowns when time expires.</li>
+            <li>Keys 1–4 select cards. Esc cancels. Same Supply rules for you and the bot.</li>
           </ul>
           <button type="button" id="howto-close" class="primary">Got it</button>
         </div>
@@ -97,9 +97,9 @@
 
       <div id="end" class="overlay hidden">
         <div class="panel">
-          <p class="eyebrow" id="end-eyebrow">The courts fall still</p>
+          <p class="eyebrow" id="end-eyebrow">The front falls still</p>
           <h2 id="end-title">Victory</h2>
-          <p id="end-sub">The Crownspire still stands.</p>
+          <p id="end-sub">The Strongpoint still stands.</p>
           <div id="end-score"></div>
           <button type="button" id="rematch-btn" class="primary">Rematch</button>
           <button type="button" id="menu-btn" class="ghost">Main menu</button>

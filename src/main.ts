@@ -1,5 +1,6 @@
 import { cardById } from "./engine/cards";
 import { Match } from "./engine/match";
+import { snapDeploy } from "./engine/pathing";
 import {
   ARENA_H,
   ARENA_W,
@@ -51,7 +52,6 @@ let difficulty: Difficulty = "normal";
 let match: Match | null = null;
 let selected = -1;
 let dragFromHand = false;
-let dragMoved = false;
 let pointerWorld: { x: number; y: number } | null = null;
 let cam: ViewCam = { x: 0, y: 0, s: 1 };
 let particles: Particle[] = [];
@@ -63,6 +63,12 @@ let doubleAnnounced = false;
 let idlePreview: Match | null = null;
 let dragOrigin = { x: 0, y: 0 };
 let towerSfxAt = 0;
+let lastNextCard = "";
+let lastHudKey = "";
+let lastCanvasW = 0;
+let lastCanvasH = 0;
+let lastDpr = 0;
+let denyAt = 0;
 
 document.querySelectorAll<HTMLButtonElement>(".diff-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -103,38 +109,71 @@ function beginMatch(): void {
   match = new Match({ difficulty });
   selected = -1;
   dragFromHand = false;
-  dragMoved = false;
   particles = [];
   floaters = [];
   playing = true;
   doubleAnnounced = false;
+  lastNextCard = "";
+  lastHudKey = "";
   menuEl.classList.add("hidden");
   howtoEl.classList.add("hidden");
   endEl.classList.add("hidden");
-  renderHand();
-  toast(difficulty === "easy" ? "Dusk Court watches the sky-lane." : "Dusk Court takes the duskglass field.");
+  renderHand(true);
+  toast(difficulty === "easy" ? "Dustfront holds the far bank." : "Dustfront takes the crossing.");
 }
 
-function renderHand(): void {
+function paintCard(btn: HTMLButtonElement, id: string, index: number): void {
+  const card = cardById(id);
+  btn.dataset.index = String(index);
+  btn.dataset.card = id;
+  btn.className = `card ${card.rarity}`;
+  const nameEl = btn.querySelector(".name");
+  const roleEl = btn.querySelector(".role");
+  const costEl = btn.querySelector(".cost");
+  if (nameEl) nameEl.textContent = card.name;
+  if (roleEl) roleEl.textContent = card.subtitle;
+  if (costEl) costEl.textContent = String(card.cost);
+  const cnv = btn.querySelector("canvas");
+  if (cnv) drawCardArt(cnv.getContext("2d")!, id, cnv.width, cnv.height);
+}
+
+function renderHand(force = false): void {
   if (!match) return;
-  const nextCtx = nextArt.getContext("2d")!;
-  drawCardArt(nextCtx, match.player.nextCard, nextArt.width, nextArt.height);
+  const ids = match.player.hand;
+  const existing = [...handEl.querySelectorAll<HTMLButtonElement>(".card")];
+  if (!force && existing.length === ids.length) {
+    ids.forEach((id, i) => {
+      const btn = existing[i];
+      if (!btn) return;
+      if (btn.dataset.card !== id) paintCard(btn, id, i);
+      else btn.dataset.index = String(i);
+    });
+    refreshHandState();
+    paintNext();
+    return;
+  }
   handEl.innerHTML = "";
-  match.player.hand.forEach((id, i) => {
+  ids.forEach((id, i) => {
     const card = cardById(id);
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = `card ${card.rarity}`;
-    btn.dataset.index = String(i);
     btn.innerHTML = `<canvas width="160" height="110"></canvas>
       <div class="cost">${card.cost}</div>
       <div class="meta"><div class="name">${card.name}</div><div class="role">${card.subtitle}</div></div>`;
-    const cnv = btn.querySelector("canvas")!;
-    drawCardArt(cnv.getContext("2d")!, id, cnv.width, cnv.height);
+    paintCard(btn, id, i);
     btn.addEventListener("pointerdown", (ev) => onCardDown(ev, i));
     handEl.appendChild(btn);
   });
   refreshHandState();
+  paintNext();
+}
+
+function paintNext(): void {
+  if (!match) return;
+  if (match.player.nextCard === lastNextCard) return;
+  lastNextCard = match.player.nextCard;
+  const nextCtx = nextArt.getContext("2d");
+  if (nextCtx) drawCardArt(nextCtx, lastNextCard, nextArt.width, nextArt.height);
 }
 
 function refreshHandState(): void {
@@ -149,18 +188,39 @@ function refreshHandState(): void {
   });
 }
 
+function denyCard(index: number): void {
+  const now = performance.now();
+  if (now - denyAt < 380) return;
+  denyAt = now;
+  toast("Need more Supply");
+  elixirFill.parentElement?.classList.remove("denied");
+  void elixirFill.parentElement?.offsetWidth;
+  elixirFill.parentElement?.classList.add("denied");
+  window.setTimeout(() => elixirFill.parentElement?.classList.remove("denied"), 420);
+  const btn = handEl.querySelector<HTMLButtonElement>(`.card[data-index="${index}"]`);
+  if (!btn) return;
+  btn.classList.remove("denied");
+  void btn.offsetWidth;
+  btn.classList.add("denied");
+  window.setTimeout(() => btn.classList.remove("denied"), 420);
+}
+
 function onCardDown(ev: PointerEvent, index: number): void {
   if (!match || match.ended) return;
   sfx.unlock();
   const id = match.player.hand[index];
   if (!id) return;
   if (match.player.elixir < cardById(id).cost) {
-    toast("Need more Aether");
+    denyCard(index);
+    return;
+  }
+  if (selected === index && !dragFromHand) {
+    selected = -1;
+    refreshHandState();
     return;
   }
   selected = index;
   dragFromHand = true;
-  dragMoved = false;
   dragOrigin = { x: ev.clientX, y: ev.clientY };
   (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId);
   refreshHandState();
@@ -171,6 +231,11 @@ function canvasPoint(ev: PointerEvent | MouseEvent): { x: number; y: number } {
   const scaleX = canvas.width / r.width;
   const scaleY = canvas.height / r.height;
   return { x: (ev.clientX - r.left) * scaleX, y: (ev.clientY - r.top) * scaleY };
+}
+
+function overCanvas(ev: PointerEvent | MouseEvent): boolean {
+  const r = canvas.getBoundingClientRect();
+  return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
 }
 
 canvas.addEventListener("pointerdown", (ev) => {
@@ -188,9 +253,6 @@ canvas.addEventListener("pointermove", (ev) => {
 
 window.addEventListener("pointermove", (ev) => {
   if (!dragFromHand) return;
-  const dx = ev.clientX - dragOrigin.x;
-  const dy = ev.clientY - dragOrigin.y;
-  if (dx * dx + dy * dy > 220) dragMoved = true;
   const p = canvasPoint(ev);
   pointerWorld = screenToWorld(cam, p.x, p.y);
 });
@@ -200,13 +262,23 @@ window.addEventListener("pointerup", (ev) => {
     dragFromHand = false;
     return;
   }
-  if (dragMoved) {
-    const p = canvasPoint(ev);
-    const w = screenToWorld(cam, p.x, p.y);
+  const p = canvasPoint(ev);
+  const w = screenToWorld(cam, p.x, p.y);
+  if (overCanvas(ev) || inArena(w.x, w.y)) {
     tryDeploy(w.x, w.y, true);
+  } else {
+    const dx = ev.clientX - dragOrigin.x;
+    const dy = ev.clientY - dragOrigin.y;
+    if (dx * dx + dy * dy > 1600) {
+      selected = -1;
+      refreshHandState();
+    }
   }
   dragFromHand = false;
-  dragMoved = false;
+});
+
+window.addEventListener("pointercancel", () => {
+  dragFromHand = false;
 });
 
 window.addEventListener("keydown", (ev) => {
@@ -223,7 +295,7 @@ window.addEventListener("keydown", (ev) => {
 });
 
 function inArena(x: number, y: number): boolean {
-  return x >= -0.2 && x <= ARENA_W + 0.2 && y >= -0.2 && y <= ARENA_H + 0.2;
+  return x >= -0.35 && x <= ARENA_W + 0.35 && y >= -0.35 && y <= ARENA_H + 0.35;
 }
 
 function tryDeploy(x: number, y: number, fromDrag = false): void {
@@ -231,19 +303,24 @@ function tryDeploy(x: number, y: number, fromDrag = false): void {
   const id = match.player.hand[selected];
   if (!id) return;
   if (!inArena(x, y)) {
-    if (fromDrag) selected = -1;
-    refreshHandState();
+    if (fromDrag) {
+      selected = -1;
+      refreshHandState();
+    }
     return;
   }
-  const ok = match.tryPlay(0, selected, x, y);
+  const snapped = snapDeploy(0, id, x, y, match.unlocksFor(0));
+  const px = snapped?.x ?? x;
+  const py = snapped?.y ?? y;
+  const ok = match.tryPlay(0, selected, px, py);
   if (ok) {
     sfx.deploy();
     selected = -1;
     renderHand();
-  } else if (!match.legalPlay(0, id, x, y)) {
+  } else if (!match.legalPlay(0, id, px, py)) {
     toast("Can't drop that there");
   } else {
-    toast("Need more Aether");
+    denyCard(selected);
   }
 }
 
@@ -252,7 +329,7 @@ function toast(text: string): void {
   el.className = "toast";
   el.textContent = text;
   toastsEl.appendChild(el);
-  window.setTimeout(() => el.remove(), 2400);
+  window.setTimeout(() => el.remove(), 1800);
 }
 
 function resize(): void {
@@ -261,6 +338,10 @@ function resize(): void {
   const dpr = Math.min(2.2, window.devicePixelRatio || 1);
   const w = Math.max(320, rect.width || stage.clientWidth);
   const h = Math.max(420, rect.height);
+  if (w === lastCanvasW && h === lastCanvasH && dpr === lastDpr) return;
+  lastCanvasW = w;
+  lastCanvasH = h;
+  lastDpr = dpr;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
   cam = layoutCam(canvas.width, canvas.height);
@@ -281,27 +362,29 @@ function fmtTime(match: Match): string {
 function updateHud(): void {
   if (!match) return;
   const e = match.player.elixir;
-  elixirCount.textContent = String(Math.floor(e));
+  const floorE = Math.floor(e);
+  const tier = match.elixirTier();
+  const key = `${floorE}|${(e * 20) | 0}|${selected}|${fmtTime(match)}|${tier}|${match.overtime ? 1 : 0}|${match.player.crowns}|${match.bot.crowns}|${match.player.hand.join(",")}`;
+  if (key === lastHudKey) return;
+  lastHudKey = key;
+  elixirCount.textContent = String(floorE);
   elixirFill.style.width = `${(e / MAX_ELIXIR) * 100}%`;
   elixirFill.parentElement?.classList.toggle("capped", e >= MAX_ELIXIR - 0.02);
   timerEl.textContent = fmtTime(match);
-  const tier = match.elixirTier();
   if (match.overtime) {
     modeChip.className = "overtime";
     modeChip.textContent = "Overtime · Triple";
   } else if (tier === "double") {
     modeChip.className = "double";
-    modeChip.textContent = "Double Aether";
+    modeChip.textContent = "Double Supply";
   } else {
     modeChip.className = "";
-    modeChip.textContent = "Single Aether";
+    modeChip.textContent = "Single Supply";
   }
   paintCrowns("enemy-crowns", match.bot.crowns);
   paintCrowns("player-crowns", match.player.crowns);
   refreshHandState();
-  const nextId = match.player.nextCard;
-  const nextCtx = nextArt.getContext("2d");
-  if (nextCtx) drawCardArt(nextCtx, nextId, nextArt.width, nextArt.height);
+  paintNext();
 }
 
 function paintCrowns(id: string, n: number): void {
@@ -313,15 +396,15 @@ function paintCrowns(id: string, n: number): void {
 function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind"] = "spark"): void {
   for (let i = 0; i < n; i++) {
     const a = (Math.PI * 2 * i) / n + Math.random() * 0.4;
-    const sp = kind === "shard" ? 2.2 + Math.random() * 2.4 : 1.5 + Math.random() * 4;
+    const sp = kind === "debris" ? 1.6 + Math.random() * 1.8 : kind === "smoke" ? 0.6 + Math.random() * 1.1 : 1.5 + Math.random() * 3.2;
     particles.push({
       x,
       y,
       vx: Math.cos(a) * sp,
-      vy: Math.sin(a) * sp,
-      life: kind === "shard" ? 0.45 + Math.random() * 0.2 : 0.35 + Math.random() * 0.4,
+      vy: Math.sin(a) * sp - (kind === "smoke" ? 0.8 : 0),
+      life: kind === "smoke" ? 0.55 + Math.random() * 0.25 : 0.32 + Math.random() * 0.32,
       maxLife: 0.7,
-      size: kind === "shard" ? 0.16 + Math.random() * 0.1 : 0.08 + Math.random() * 0.12,
+      size: kind === "smoke" ? 0.22 + Math.random() * 0.14 : kind === "debris" ? 0.1 + Math.random() * 0.08 : 0.07 + Math.random() * 0.1,
       color,
       kind,
     });
@@ -330,47 +413,46 @@ function burst(x: number, y: number, color: string, n = 12, kind: Particle["kind
 
 function handleEvents(events: MatchEvent[]): void {
   for (const ev of events) {
-    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#5cf6d5" : "#ff6b9a", 14, "ring");
+    if (ev.type === "spawn") burst(ev.x, ev.y, ev.team === 0 ? "#6fa8dc" : "#c4a35a", 10, "ring");
     if (ev.type === "death") {
-      burst(ev.x, ev.y, "#f4d78a", 6, "shard");
-      burst(ev.x, ev.y, "#fff6d4", 8, "spark");
+      burst(ev.x, ev.y, "rgba(180,180,170,0.9)", 8, "smoke");
+      burst(ev.x, ev.y, "#6a5a3a", 5, "debris");
     }
     if (ev.type === "hit") {
       floaters.push({
         x: ev.x,
         y: ev.y,
         text: String(ev.amount),
-        color: ev.crit ? "#ffb0f3" : "#fff6d4",
-        life: 0.7,
-        maxLife: 0.7,
-        vy: -1.6,
+        color: ev.crit ? "#e8a040" : "#f2efe6",
+        life: 0.55,
+        maxLife: 0.55,
+        vy: -1.8,
       });
       if (ev.amount > 90) sfx.hit();
     }
     if (ev.type === "spell") {
-      sfx.spell(ev.cardId === "frostbind" ? "frostbind" : "riftburst");
-      burst(ev.x, ev.y, ev.cardId === "frostbind" ? "#8ee7ff" : "#ff5ad5", 10, "spark");
+      sfx.spell(ev.cardId === "smoke" ? "smoke" : "barrage");
+      burst(ev.x, ev.y, ev.cardId === "smoke" ? "#c8c4b4" : "#d45a20", 10, ev.cardId === "smoke" ? "smoke" : "spark");
     }
-    if (ev.type === "freeze") burst(ev.x, ev.y, "#d7f6ff", 8, "frost");
+    if (ev.type === "freeze") burst(ev.x, ev.y, "#c8c4b4", 8, "smoke");
     if (ev.type === "tower-hit") {
-      shake = Math.max(shake, 0.14);
+      shake = Math.max(shake, 0.12);
       const tnow = performance.now();
       if (tnow - towerSfxAt > 160) {
         sfx.tower();
         towerSfxAt = tnow;
       }
     }
-    if (ev.type === "play" && ev.team === 1) toast(`Dusk Court plays ${ev.name}`);
     if (ev.type === "double" && !doubleAnnounced) {
       doubleAnnounced = true;
-      toast("Double Aether!");
+      toast("Double Supply!");
     }
     if (ev.type === "overtime") {
-      toast("Overtime — Crownspires must fall!");
+      toast("Overtime — Strongpoints must fall!");
       sfx.overtime();
     }
-    if (ev.type === "triple") toast("Triple Aether!");
-    if (ev.type === "king-awake") toast(ev.team === 0 ? "Your Crownspire awakens!" : "Enemy Crownspire awakens!");
+    if (ev.type === "triple") toast("Triple Supply!");
+    if (ev.type === "king-awake") toast(ev.team === 0 ? "Your Strongpoint is live!" : "Enemy Strongpoint is live!");
     if (ev.type === "end") showEnd(ev.winner);
   }
 }
@@ -383,22 +465,22 @@ function showEnd(winner: "player" | "bot" | "draw"): void {
   if (winner === "player") {
     endTitle.textContent = "Victory";
     endTitle.classList.add("win");
-    endEyebrow.textContent = "Aurora Keep holds the courts";
-    endSub.textContent = "The Dusk Court Crownspire shatters into starlight.";
+    endEyebrow.textContent = "Riverwatch holds the crossing";
+    endSub.textContent = "The Dustfront Strongpoint is down. The river is yours.";
     sfx.win();
   } else if (winner === "bot") {
     endTitle.textContent = "Defeat";
     endTitle.classList.add("lose");
-    endEyebrow.textContent = "Duskglass claims the lane";
-    endSub.textContent = "Your Crownspire has fallen. Gather Aether and try again.";
+    endEyebrow.textContent = "Dustfront takes the lane";
+    endSub.textContent = "Your Strongpoint has fallen. Restock Supply and try again.";
     sfx.lose();
   } else {
     endTitle.textContent = "Stalemate";
     endTitle.classList.add("draw");
-    endEyebrow.textContent = "The starlight river holds";
-    endSub.textContent = "Neither keep claimed the duskglass courts.";
+    endEyebrow.textContent = "The river holds";
+    endSub.textContent = "Neither bank claimed the crossing.";
   }
-  endScore.innerHTML = `<span>You ${match.player.crowns}</span><span>Dusk ${match.bot.crowns}</span>`;
+  endScore.innerHTML = `<span>Watch ${match.player.crowns}</span><span>Dust ${match.bot.crowns}</span>`;
 }
 
 function tickParticles(dt: number): void {
@@ -406,7 +488,12 @@ function tickParticles(dt: number): void {
     p.life -= dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    p.vy += 2.2 * dt;
+    if (p.kind === "smoke") {
+      p.vy -= 0.8 * dt;
+      p.size += dt * 0.35;
+    } else {
+      p.vy += 2.2 * dt;
+    }
   }
   particles = particles.filter((p) => p.life > 0);
   for (const f of floaters) {
@@ -415,7 +502,7 @@ function tickParticles(dt: number): void {
     f.vy += 1.2 * dt;
   }
   floaters = floaters.filter((f) => f.life > 0);
-  shake = Math.max(0, shake - dt);
+  shake = Math.max(0, shake - dt * 1.4);
 }
 
 function drawParticles(): void {
@@ -430,25 +517,18 @@ function drawParticles(): void {
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 0.07;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, (1 - a) * 1.1 + 0.18, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, (1 - a) * 1.0 + 0.16, 0, Math.PI * 2);
       ctx.stroke();
-    } else if (p.kind === "frost") {
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 0.05;
+    } else if (p.kind === "smoke") {
+      ctx.fillStyle = "rgba(180,180,170,0.55)";
       ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x + p.vx * 0.04, p.y + p.vy * 0.04);
-      ctx.stroke();
-    } else if (p.kind === "shard") {
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.kind === "debris") {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(Math.atan2(p.vy, p.vx));
-      ctx.beginPath();
-      ctx.moveTo(p.size * 2.2, 0);
-      ctx.lineTo(-p.size, p.size * 1.1);
-      ctx.lineTo(-p.size * 0.4, -p.size * 1.2);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(-p.size, -p.size * 0.4, p.size * 2, p.size * 0.8);
       ctx.restore();
     } else {
       ctx.beginPath();
@@ -457,7 +537,7 @@ function drawParticles(): void {
     }
   }
   ctx.textAlign = "center";
-  ctx.font = "0.55px Trebuchet MS";
+  ctx.font = "0.55px Barlow, sans-serif";
   for (const f of floaters) {
     ctx.globalAlpha = clamp(f.life / f.maxLife, 0, 1);
     ctx.fillStyle = f.color;
@@ -487,8 +567,8 @@ function frame(now: number): void {
     handleEvents(match.drainEvents());
     tickParticles(dt);
     updateHud();
-    const sx = shake ? (Math.random() - 0.5) * 10 * shake : 0;
-    const sy = shake ? (Math.random() - 0.5) * 10 * shake : 0;
+    const sx = shake ? (Math.random() - 0.5) * 8 * shake : 0;
+    const sy = shake ? (Math.random() - 0.5) * 8 * shake : 0;
     ctx.save();
     ctx.translate(sx, sy);
     const hover =
@@ -496,17 +576,22 @@ function frame(now: number): void {
         ? {
             x: pointerWorld.x,
             y: pointerWorld.y,
-            valid: match.legalPlay(0, match.player.hand[selected]!, pointerWorld.x, pointerWorld.y),
+            valid: Boolean(
+              snapDeploy(0, match.player.hand[selected]!, pointerWorld.x, pointerWorld.y, match.unlocksFor(0)),
+            ),
             cardId: match.player.hand[selected]!,
           }
         : null;
     drawArena(ctx, match, cam, t, hover);
     if (hover && cardById(hover.cardId).kind !== "spell") {
-      const ghost = worldToScreen(cam, hover.x, hover.y);
+      const snapped = snapDeploy(0, hover.cardId, hover.x, hover.y, match.unlocksFor(0));
+      const gx = snapped?.x ?? hover.x;
+      const gy = snapped?.y ?? hover.y;
+      const ghost = worldToScreen(cam, gx, gy);
       ctx.globalAlpha = 0.55;
       ctx.beginPath();
       ctx.arc(ghost.x, ghost.y, 0.5 * cam.s, 0, Math.PI * 2);
-      ctx.fillStyle = hover.valid ? "#5cf6d5" : "#ff6b9a";
+      ctx.fillStyle = hover.valid ? "#6fa8dc" : "#c45a3a";
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -523,4 +608,3 @@ function frame(now: number): void {
 }
 
 requestAnimationFrame(frame);
-

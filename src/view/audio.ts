@@ -1,7 +1,7 @@
 export class Sfx {
   private ctx: AudioContext | null = null;
   private muted = false;
-  private master = 0.22;
+  private master = 0.2;
 
   private ac(): AudioContext | null {
     if (this.muted) return null;
@@ -57,7 +57,7 @@ export class Sfx {
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     const f = ctx.createBiquadFilter();
     f.type = "lowpass";
-    f.frequency.value = 900;
+    f.frequency.value = 700;
     src.connect(f);
     f.connect(g);
     g.connect(ctx.destination);
@@ -65,36 +65,37 @@ export class Sfx {
   }
 
   click(): void {
-    this.tone(520, 0.07, "square", 0.08);
+    this.tone(420, 0.06, "square", 0.07);
   }
   deploy(): void {
-    this.tone(180, 0.12, "triangle", 0.16);
-    this.noise(0.08, 0.08);
+    this.tone(140, 0.1, "triangle", 0.14);
+    this.noise(0.09, 0.1);
   }
   hit(): void {
-    this.tone(220, 0.06, "square", 0.07);
+    this.tone(180, 0.05, "square", 0.07);
   }
-  spell(kind: "riftburst" | "frostbind"): void {
-    if (kind === "frostbind") {
-      this.tone(740, 0.35, "sine", 0.12, 0, 240);
+  spell(kind: "barrage" | "smoke"): void {
+    if (kind === "smoke") {
+      this.noise(0.32, 0.12);
+      this.tone(220, 0.22, "sine", 0.06, 0, 90);
     } else {
-      this.noise(0.22, 0.2);
-      this.tone(90, 0.28, "sawtooth", 0.14, 0, 40);
+      this.noise(0.28, 0.22);
+      this.tone(80, 0.3, "sawtooth", 0.14, 0, 40);
     }
   }
   tower(): void {
-    this.tone(140, 0.16, "sine", 0.14);
+    this.tone(120, 0.14, "sine", 0.12);
   }
   win(): void {
-    this.tone(523, 0.18, "triangle", 0.14, 0);
-    this.tone(659, 0.18, "triangle", 0.14, 0.12);
-    this.tone(784, 0.35, "triangle", 0.16, 0.24);
+    this.tone(392, 0.16, "triangle", 0.12, 0);
+    this.tone(523, 0.16, "triangle", 0.12, 0.12);
+    this.tone(659, 0.32, "triangle", 0.14, 0.24);
   }
   lose(): void {
-    this.tone(300, 0.25, "sawtooth", 0.1, 0, 110);
+    this.tone(220, 0.28, "sawtooth", 0.09, 0, 90);
   }
   overtime(): void {
-    this.tone(880, 0.12, "square", 0.1);
-    this.tone(880, 0.12, "square", 0.1, 0.16);
+    this.tone(620, 0.1, "square", 0.08);
+    this.tone(620, 0.1, "square", 0.08, 0.16);
   }
 }
