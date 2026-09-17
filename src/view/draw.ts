@@ -20,12 +20,14 @@ export interface ViewCam {
 }
 
 const WATCH = "#6fa8dc";
-const DUST = "#c4a35a";
+const DUST_BRIGHT = "#e8d48a";
 const BRASS = "#c9a227";
 const WATCH_DEEP = "#1a3348";
 const DUST_DEEP = "#3a2e14";
 const WATCH_MID = "#3d6f94";
 const DUST_MID = "#8a6b2e";
+const SKIN = "#c9a882";
+const SKIN_SHADOW = "#8a6a48";
 
 export function layoutCam(cw: number, ch: number): ViewCam {
   const padX = cw * 0.05;
@@ -45,9 +47,53 @@ export function screenToWorld(cam: ViewCam, x: number, y: number): { x: number; 
   return { x: (x - cam.x) / cam.s, y: (y - cam.y) / cam.s };
 }
 
-const teamGlow = (team: Team) => (team === 0 ? WATCH : DUST);
-const teamDeep = (team: Team) => (team === 0 ? WATCH_DEEP : DUST_DEEP);
+const teamGlow = (team: Team) => (team === 0 ? WATCH : DUST_BRIGHT);
 const teamMid = (team: Team) => (team === 0 ? WATCH_MID : DUST_MID);
+
+interface Kit {
+  rim: string;
+  mid: string;
+  deep: string;
+  cloth: string;
+  clothLight: string;
+  helmet: string;
+  helmetLight: string;
+  webbing: string;
+  wood: string;
+  metal: string;
+  metalLight: string;
+}
+
+function kit(team: Team): Kit {
+  if (team === 0) {
+    return {
+      rim: WATCH,
+      mid: WATCH_MID,
+      deep: WATCH_DEEP,
+      cloth: "#3a6284",
+      clothLight: "#6fa8dc",
+      helmet: "#243848",
+      helmetLight: "#8ec4e8",
+      webbing: "#d8d2c0",
+      wood: "#6a4a28",
+      metal: "#b8b4a8",
+      metalLight: "#ece8dc",
+    };
+  }
+  return {
+    rim: DUST_BRIGHT,
+    mid: DUST_MID,
+    deep: DUST_DEEP,
+    cloth: "#c4a35a",
+    clothLight: "#e8d48a",
+    helmet: "#5c4a24",
+    helmetLight: "#f2e6b0",
+    webbing: "#efe6c4",
+    wood: "#6a4a28",
+    metal: "#c4b896",
+    metalLight: "#efe6c8",
+  };
+}
 
 export function drawArena(
   ctx: CanvasRenderingContext2D,
@@ -301,7 +347,7 @@ function drawBridges(ctx: CanvasRenderingContext2D): void {
 
     ctx.fillStyle = BRASS;
     for (let i = 0; i < 4; i++) {
-      const ry = y + 0.22 + i * (h - 0.4) / 3;
+      const ry = y + 0.22 + (i * (h - 0.4)) / 3;
       ctx.beginPath();
       ctx.arc(x + 0.11, ry, 0.045, 0, Math.PI * 2);
       ctx.arc(x + w - 0.11, ry, 0.045, 0, Math.PI * 2);
@@ -336,10 +382,10 @@ function drawPads(ctx: CanvasRenderingContext2D, match: Match): void {
     ctx.save();
     ctx.translate(e.x, e.y);
     ctx.beginPath();
-    ctx.ellipse(0, e.radius * 0.62, e.radius * (king ? 1.55 : 1.18), e.radius * (king ? 0.58 : 0.42), 0, 0, Math.PI * 2);
-    ctx.fillStyle = e.team === 0 ? "rgba(111,168,220,0.14)" : "rgba(196,163,90,0.14)";
+    ctx.ellipse(0, e.radius * 0.7, e.radius * (king ? 1.85 : 1.28), e.radius * (king ? 0.72 : 0.48), 0, 0, Math.PI * 2);
+    ctx.fillStyle = e.team === 0 ? "rgba(111,168,220,0.16)" : "rgba(232,212,138,0.16)";
     ctx.fill();
-    ctx.strokeStyle = e.team === 0 ? "rgba(111,168,220,0.28)" : "rgba(196,163,90,0.28)";
+    ctx.strokeStyle = e.team === 0 ? "rgba(111,168,220,0.32)" : "rgba(232,212,138,0.32)";
     ctx.lineWidth = 0.05;
     ctx.stroke();
     ctx.restore();
@@ -375,7 +421,7 @@ function drawDeployHint(
     if (unlock.right) ctx.fillRect(ARENA_W * 0.5, 6.4, ARENA_W * 0.5 - 0.15, RIVER_TOP - 6.4);
     ctx.globalAlpha = 0.95;
     ctx.beginPath();
-    ctx.arc(hover.x, hover.y, card.radius + 0.28, 0, Math.PI * 2);
+    ctx.arc(hover.x, hover.y, Math.max(0.55, card.radius + 0.22), 0, Math.PI * 2);
     ctx.strokeStyle = hover.valid ? "#e8f0f6" : "#e07050";
     ctx.lineWidth = 0.09;
     ctx.stroke();
@@ -397,84 +443,514 @@ function drawDeployHint(
   ctx.restore();
 }
 
+function paint(ctx: CanvasRenderingContext2D, fill: string, stroke: string, lw = 0.05): void {
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+}
+
+function shadow(ctx: CanvasRenderingContext2D, rx: number, ry: number, y = 0.42): void {
+  ctx.beginPath();
+  ctx.ellipse(0, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  ctx.fill();
+}
+
+function drawHelmet(ctx: CanvasRenderingContext2D, k: Kit, x: number, y: number, s: number): void {
+  ctx.beginPath();
+  ctx.ellipse(x, y + 0.04 * s, 0.2 * s, 0.09 * s, 0, 0, Math.PI * 2);
+  ctx.fillStyle = SKIN_SHADOW;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y + 0.02 * s, 0.16 * s, 0.1 * s, 0, 0, Math.PI * 2);
+  ctx.fillStyle = SKIN;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y - 0.02 * s, 0.22 * s, 0.14 * s, 0, Math.PI, Math.PI * 2, true);
+  paint(ctx, k.helmet, k.rim, 0.04 * s);
+  ctx.beginPath();
+  ctx.ellipse(x, y - 0.06 * s, 0.12 * s, 0.07 * s, 0, Math.PI, Math.PI * 2, true);
+  ctx.fillStyle = k.helmetLight;
+  ctx.globalAlpha = 0.45;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = k.deep;
+  ctx.fillRect(x - 0.23 * s, y + 0.01 * s, 0.46 * s, 0.055 * s);
+  ctx.strokeStyle = k.helmetLight;
+  ctx.lineWidth = 0.03 * s;
+  ctx.beginPath();
+  ctx.moveTo(x - 0.2 * s, y + 0.02 * s);
+  ctx.lineTo(x + 0.2 * s, y + 0.02 * s);
+  ctx.stroke();
+}
+
+function drawRifle(
+  ctx: CanvasRenderingContext2D,
+  k: Kit,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  bayonet = false,
+  scope = false,
+): void {
+  ctx.lineCap = "round";
+  ctx.strokeStyle = k.wood;
+  ctx.lineWidth = 0.09;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  ctx.strokeStyle = k.metal;
+  ctx.lineWidth = 0.045;
+  ctx.beginPath();
+  const mx = x0 + (x1 - x0) * 0.45;
+  const my = y0 + (y1 - y0) * 0.45;
+  ctx.moveTo(mx, my);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  ctx.strokeStyle = k.metalLight;
+  ctx.lineWidth = 0.02;
+  ctx.stroke();
+  if (scope) {
+    ctx.fillStyle = k.metalLight;
+    ctx.beginPath();
+    ctx.arc(x0 + (x1 - x0) * 0.58, y0 + (y1 - y0) * 0.58 - 0.06, 0.055, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = k.rim;
+    ctx.lineWidth = 0.025;
+    ctx.stroke();
+  }
+  if (bayonet) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    ctx.fillStyle = k.metalLight;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + ux * 0.38 - uy * 0.05, y1 + uy * 0.38 + ux * 0.05);
+    ctx.lineTo(x1 + ux * 0.08 + uy * 0.04, y1 + uy * 0.08 - ux * 0.04);
+    ctx.closePath();
+    paint(ctx, k.metalLight, BRASS, 0.03);
+  }
+}
+
+function drawScout(ctx: CanvasRenderingContext2D, e: Entity, bob = 0): void {
+  const k = kit(e.team);
+  const stride = Math.sin(bob) * 0.08;
+  shadow(ctx, 0.38, 0.16, 0.48);
+  roundRect(ctx, -0.16, 0.18 + stride, 0.12, 0.32, 0.04);
+  paint(ctx, k.deep, k.rim, 0.04);
+  roundRect(ctx, 0.04, 0.16 - stride, 0.12, 0.34, 0.04);
+  paint(ctx, k.cloth, k.rim, 0.04);
+  roundRect(ctx, -0.12, 0.34, 0.1, 0.08, 0.02);
+  ctx.fillStyle = k.deep;
+  ctx.fill();
+  roundRect(ctx, 0.06, 0.36, 0.1, 0.08, 0.02);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-0.22, 0.2);
+  ctx.lineTo(-0.18, -0.22);
+  ctx.lineTo(0.18, -0.22);
+  ctx.lineTo(0.22, 0.2);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(-0.2, -0.22, 0.22, 0.22);
+  body.addColorStop(0, k.clothLight);
+  body.addColorStop(0.45, k.cloth);
+  body.addColorStop(1, k.deep);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.055;
+  ctx.stroke();
+  roundRect(ctx, 0.08, -0.08, 0.16, 0.22, 0.04);
+  paint(ctx, k.deep, k.rim, 0.03);
+  ctx.fillStyle = k.webbing;
+  ctx.fillRect(-0.14, 0.02, 0.28, 0.05);
+  ctx.fillRect(-0.03, -0.18, 0.06, 0.28);
+  roundRect(ctx, -0.26, -0.18, 0.1, 0.28, 0.03);
+  paint(ctx, k.clothLight, k.rim, 0.03);
+  roundRect(ctx, 0.16, -0.16, 0.1, 0.22, 0.03);
+  paint(ctx, k.cloth, k.rim, 0.03);
+  drawRifle(ctx, k, 0.18, -0.05, 0.12, -0.72, false, false);
+  drawHelmet(ctx, k, 0, -0.34, 0.92);
+}
+
+function drawBayonet(ctx: CanvasRenderingContext2D, e: Entity, bob = 0): void {
+  const k = kit(e.team);
+  const stride = Math.sin(bob) * 0.1;
+  shadow(ctx, 0.48, 0.18, 0.58);
+  ctx.save();
+  ctx.translate(0, -0.06);
+  roundRect(ctx, -0.2, 0.22 + stride * 0.6, 0.14, 0.42, 0.045);
+  paint(ctx, k.deep, k.rim, 0.045);
+  roundRect(ctx, 0.08, 0.18 - stride, 0.15, 0.46, 0.045);
+  paint(ctx, k.cloth, k.rim, 0.045);
+  roundRect(ctx, -0.16, 0.5, 0.12, 0.1, 0.03);
+  ctx.fillStyle = k.deep;
+  ctx.fill();
+  roundRect(ctx, 0.1, 0.5, 0.14, 0.1, 0.03);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-0.32, 0.22);
+  ctx.lineTo(-0.28, -0.38);
+  ctx.lineTo(-0.08, -0.48);
+  ctx.lineTo(0.22, -0.4);
+  ctx.lineTo(0.34, 0.24);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(-0.3, -0.48, 0.32, 0.26);
+  body.addColorStop(0, k.clothLight);
+  body.addColorStop(0.4, k.cloth);
+  body.addColorStop(1, k.deep);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.065;
+  ctx.stroke();
+  ctx.fillStyle = k.webbing;
+  ctx.fillRect(-0.26, 0.04, 0.52, 0.07);
+  ctx.fillRect(-0.04, -0.36, 0.08, 0.42);
+  ctx.fillStyle = BRASS;
+  ctx.beginPath();
+  ctx.arc(0.1, 0.07, 0.035, 0, Math.PI * 2);
+  ctx.fill();
+  roundRect(ctx, -0.38, -0.28, 0.14, 0.36, 0.04);
+  paint(ctx, k.clothLight, k.rim, 0.04);
+  roundRect(ctx, 0.22, -0.22, 0.14, 0.32, 0.04);
+  paint(ctx, k.cloth, k.rim, 0.04);
+  drawRifle(ctx, k, 0.16, 0.12, 0.08, -1.05, true, false);
+  drawHelmet(ctx, k, -0.02, -0.58, 1.15);
+  ctx.restore();
+}
+
+function drawMarksman(ctx: CanvasRenderingContext2D, e: Entity): void {
+  const k = kit(e.team);
+  shadow(ctx, 0.55, 0.2, 0.38);
+  ctx.beginPath();
+  ctx.ellipse(0.12, 0.28, 0.22, 0.16, -0.35, 0, Math.PI * 2);
+  paint(ctx, k.deep, k.rim, 0.045);
+  roundRect(ctx, -0.08, 0.12, 0.18, 0.28, 0.05);
+  paint(ctx, k.cloth, k.rim, 0.04);
+  ctx.beginPath();
+  ctx.ellipse(-0.02, 0.02, 0.28, 0.18, -0.55, 0, Math.PI * 2);
+  const body = ctx.createLinearGradient(-0.3, -0.2, 0.25, 0.25);
+  body.addColorStop(0, k.clothLight);
+  body.addColorStop(0.5, k.cloth);
+  body.addColorStop(1, k.deep);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.055;
+  ctx.stroke();
+  ctx.fillStyle = k.webbing;
+  ctx.fillRect(-0.16, 0.0, 0.28, 0.045);
+  roundRect(ctx, -0.34, 0.02, 0.16, 0.14, 0.04);
+  paint(ctx, k.clothLight, k.rim, 0.035);
+  roundRect(ctx, 0.12, 0.08, 0.16, 0.12, 0.04);
+  paint(ctx, k.cloth, k.rim, 0.035);
+  ctx.strokeStyle = k.metal;
+  ctx.lineWidth = 0.04;
+  ctx.beginPath();
+  ctx.moveTo(-0.22, -0.18);
+  ctx.lineTo(-0.18, 0.08);
+  ctx.moveTo(-0.08, -0.18);
+  ctx.lineTo(-0.04, 0.1);
+  ctx.stroke();
+  drawRifle(ctx, k, -0.35, -0.12, -0.22, -1.15, false, true);
+  ctx.fillStyle = k.metalLight;
+  ctx.fillRect(-0.28, -1.18, 0.12, 0.06);
+  drawHelmet(ctx, k, -0.18, -0.28, 1.0);
+}
+
+function drawIronhide(ctx: CanvasRenderingContext2D, e: Entity, bob = 0): void {
+  const k = kit(e.team);
+  shadow(ctx, 0.95, 0.28, 0.52);
+  if (e.speed > 0) {
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = "#cbb98a";
+    ctx.beginPath();
+    ctx.ellipse(0.15, 0.58, 0.35 + Math.abs(Math.sin(bob)) * 0.12, 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  roundRect(ctx, -0.78, 0.18, 0.18, 0.42, 0.04);
+  paint(ctx, k.deep, k.rim, 0.04);
+  roundRect(ctx, 0.6, 0.18, 0.18, 0.42, 0.04);
+  paint(ctx, k.deep, k.rim, 0.04);
+  ctx.fillStyle = k.metal;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.arc(-0.69, 0.22 + i * 0.08, 0.055, 0, Math.PI * 2);
+    ctx.arc(0.69, 0.22 + i * 0.08, 0.055, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.moveTo(-0.62, 0.38);
+  ctx.lineTo(-0.52, -0.18);
+  ctx.lineTo(-0.18, -0.32);
+  ctx.lineTo(0.22, -0.32);
+  ctx.lineTo(0.55, -0.12);
+  ctx.lineTo(0.64, 0.4);
+  ctx.closePath();
+  const hull = ctx.createLinearGradient(-0.6, -0.32, 0.64, 0.42);
+  hull.addColorStop(0, k.metalLight);
+  hull.addColorStop(0.35, k.cloth);
+  hull.addColorStop(1, k.deep);
+  ctx.fillStyle = hull;
+  ctx.fill();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.08;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-0.5, -0.12);
+  ctx.lineTo(-0.18, -0.28);
+  ctx.lineTo(0.2, -0.28);
+  ctx.lineTo(0.48, -0.08);
+  ctx.lineTo(0.42, 0.08);
+  ctx.lineTo(-0.46, 0.08);
+  ctx.closePath();
+  ctx.fillStyle = k.metal;
+  ctx.fill();
+  ctx.strokeStyle = k.helmetLight;
+  ctx.lineWidth = 0.03;
+  ctx.stroke();
+  roundRect(ctx, -0.32, -0.52, 0.64, 0.42, 0.08);
+  paint(ctx, k.mid, k.rim, 0.07);
+  roundRect(ctx, -0.18, -0.42, 0.14, 0.12, 0.02);
+  ctx.fillStyle = k.deep;
+  ctx.fill();
+  roundRect(ctx, 0.04, -0.42, 0.14, 0.12, 0.02);
+  ctx.fillStyle = k.helmetLight;
+  ctx.globalAlpha = 0.55;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = k.metal;
+  ctx.fillRect(-0.045, -1.05, 0.09, 0.58);
+  ctx.fillStyle = k.metalLight;
+  ctx.fillRect(-0.045, -1.05, 0.09, 0.12);
+  ctx.beginPath();
+  ctx.arc(0, -1.08, 0.07, 0, Math.PI * 2);
+  paint(ctx, k.metalLight, k.rim, 0.03);
+  ctx.beginPath();
+  ctx.arc(0.22, -0.28, 0.05, 0, Math.PI * 2);
+  ctx.fillStyle = k.rim;
+  ctx.fill();
+}
+
+function drawMortar(ctx: CanvasRenderingContext2D, e: Entity, t = 0): void {
+  const k = kit(e.team);
+  shadow(ctx, 0.55, 0.2, 0.5);
+  ctx.beginPath();
+  ctx.ellipse(0.12, 0.38, 0.32, 0.12, 0, 0, Math.PI * 2);
+  paint(ctx, k.deep, k.metal, 0.04);
+  ctx.strokeStyle = k.metal;
+  ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  ctx.moveTo(-0.18, 0.32);
+  ctx.lineTo(-0.05, -0.02);
+  ctx.moveTo(0.32, 0.32);
+  ctx.lineTo(0.12, 0.0);
+  ctx.stroke();
+  ctx.lineCap = "round";
+  ctx.strokeStyle = k.deep;
+  ctx.lineWidth = 0.2;
+  ctx.beginPath();
+  ctx.moveTo(0.04, 0.16);
+  ctx.lineTo(0.42, -0.72);
+  ctx.stroke();
+  ctx.strokeStyle = k.metal;
+  ctx.lineWidth = 0.12;
+  ctx.stroke();
+  ctx.strokeStyle = k.metalLight;
+  ctx.lineWidth = 0.04;
+  ctx.beginPath();
+  ctx.moveTo(0.1, 0.04);
+  ctx.lineTo(0.42, -0.72);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0.46, -0.8, 0.08, 0, Math.PI * 2);
+  paint(ctx, k.metalLight, BRASS, 0.03);
+  ctx.fillStyle = "#e8a040";
+  ctx.beginPath();
+  ctx.arc(0.58, -0.96, 0.055 + Math.sin(t * 8) * 0.012, 0, Math.PI * 2);
+  ctx.fill();
+  roundRect(ctx, 0.22, 0.18, 0.1, 0.12, 0.02);
+  paint(ctx, k.metal, BRASS, 0.03);
+  ctx.beginPath();
+  ctx.ellipse(-0.22, 0.22, 0.2, 0.16, 0.2, 0, Math.PI * 2);
+  const crew = ctx.createLinearGradient(-0.4, 0.0, -0.05, 0.38);
+  crew.addColorStop(0, k.clothLight);
+  crew.addColorStop(1, k.deep);
+  ctx.fillStyle = crew;
+  ctx.fill();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.05;
+  ctx.stroke();
+  roundRect(ctx, -0.38, 0.08, 0.12, 0.2, 0.03);
+  paint(ctx, k.cloth, k.rim, 0.03);
+  drawHelmet(ctx, k, -0.22, -0.02, 0.95);
+}
+
+function drawPillbox(ctx: CanvasRenderingContext2D, e: Entity, t = 0): void {
+  const k = kit(e.team);
+  shadow(ctx, 0.92, 0.28, 0.55);
+  ctx.fillStyle = "#6e5c38";
+  for (let r = 0; r < 3; r++) {
+    const bags = 7 - r;
+    for (let i = 0; i < bags; i++) {
+      const bw = 1.7 / 7;
+      const bx = -0.82 + i * bw + (r % 2 ? 0.08 : 0);
+      const by = 0.32 - r * 0.16;
+      roundRect(ctx, bx, by, bw - 0.04, 0.16, 0.05);
+      ctx.fill();
+      ctx.strokeStyle = r % 2 ? "#cbb98a" : "#4a3c24";
+      ctx.lineWidth = 0.02;
+      ctx.stroke();
+    }
+  }
+  ctx.beginPath();
+  ctx.moveTo(-0.62, 0.12);
+  ctx.lineTo(-0.55, -0.42);
+  ctx.lineTo(0.55, -0.42);
+  ctx.lineTo(0.64, 0.12);
+  ctx.closePath();
+  const conc = ctx.createLinearGradient(0, -0.45, 0, 0.18);
+  conc.addColorStop(0, "#d8d0b8");
+  conc.addColorStop(0.45, k.cloth);
+  conc.addColorStop(1, k.deep);
+  ctx.fillStyle = conc;
+  ctx.fill();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.07;
+  ctx.stroke();
+  ctx.strokeStyle = k.metalLight;
+  ctx.lineWidth = 0.035;
+  ctx.beginPath();
+  ctx.moveTo(-0.5, -0.38);
+  ctx.lineTo(0.5, -0.38);
+  ctx.stroke();
+  ctx.fillStyle = k.deep;
+  roundRect(ctx, -0.28, -0.22, 0.56, 0.18, 0.03);
+  ctx.fill();
+  ctx.fillStyle = k.rim;
+  ctx.globalAlpha = 0.7 + Math.sin(t * 5) * 0.15;
+  ctx.fillRect(-0.2, -0.16, 0.4, 0.06);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = k.metal;
+  ctx.lineWidth = 0.07;
+  ctx.beginPath();
+  ctx.moveTo(0.28, -0.4);
+  ctx.lineTo(0.28, -0.98);
+  ctx.stroke();
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = 0.035;
+  ctx.beginPath();
+  ctx.moveTo(0.28, -0.98);
+  ctx.lineTo(0.52, -0.72);
+  ctx.lineTo(0.28, -0.58);
+  ctx.stroke();
+}
+
 function drawTower(ctx: CanvasRenderingContext2D, e: Entity): void {
   const king = e.towerSlot === "king";
-  const glow = teamGlow(e.team);
+  const k = kit(e.team);
   ctx.save();
   ctx.translate(e.x, e.y);
   if (e.dying > 0) ctx.globalAlpha = Math.max(0, e.dying);
 
-  const bodyW = king ? 2.55 : 1.62;
-  const wallH = king ? 1.35 : 0.82;
+  const bodyW = king ? 3.15 : 1.95;
+  const wallH = king ? 1.85 : 1.05;
 
-  ctx.beginPath();
-  ctx.ellipse(0, 0.58, bodyW * 0.78, king ? 0.42 : 0.3, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ctx.fill();
+  shadow(ctx, bodyW * 0.72, king ? 0.5 : 0.32, 0.7);
 
-  const sand = ctx.createLinearGradient(0, -wallH, 0, 0.55);
-  sand.addColorStop(0, "#d4c49a");
-  sand.addColorStop(0.35, teamMid(e.team));
-  sand.addColorStop(1, teamDeep(e.team));
-
-  roundRect(ctx, -bodyW * 0.5, -wallH * 0.55, bodyW, wallH + 0.55, 0.1);
+  const sand = ctx.createLinearGradient(0, -wallH, 0, 0.7);
+  sand.addColorStop(0, "#d8cba0");
+  sand.addColorStop(0.35, k.mid);
+  sand.addColorStop(1, k.deep);
+  roundRect(ctx, -bodyW * 0.5, -wallH * 0.55, bodyW, wallH + 0.62, 0.1);
   ctx.fillStyle = sand;
   ctx.fill();
-  ctx.strokeStyle = glow;
-  ctx.lineWidth = king ? 0.1 : 0.08;
+  ctx.strokeStyle = k.rim;
+  ctx.lineWidth = king ? 0.11 : 0.08;
   ctx.stroke();
 
+  if (king) {
+    roundRect(ctx, -bodyW * 0.72, -0.15, bodyW * 0.28, 0.85, 0.08);
+    paint(ctx, k.mid, k.rim, 0.06);
+    roundRect(ctx, bodyW * 0.44, -0.15, bodyW * 0.28, 0.85, 0.08);
+    paint(ctx, k.mid, k.rim, 0.06);
+  }
+
   ctx.fillStyle = "#6e5c38";
-  const rows = king ? 3 : 2;
-  const bags = king ? 8 : 5;
+  const rows = king ? 5 : 3;
+  const bags = king ? 10 : 6;
   for (let r = 0; r < rows; r++) {
     for (let i = 0; i < bags - (r % 2); i++) {
       const bw = bodyW / bags;
-      const bx = -bodyW * 0.48 + i * bw + (r % 2 ? bw * 0.35 : 0);
-      const by = 0.18 - r * 0.2;
-      roundRect(ctx, bx, by, bw - 0.04, 0.18, 0.05);
+      const bx = -bodyW * 0.48 + i * bw + (r % 2 ? bw * 0.32 : 0);
+      const by = 0.42 - r * 0.18;
+      roundRect(ctx, bx, by, bw - 0.03, 0.17, 0.05);
       ctx.fill();
+      if (i % 2 === 0) {
+        ctx.strokeStyle = "#cbb98a";
+        ctx.lineWidth = 0.02;
+        ctx.stroke();
+      }
     }
   }
 
-  ctx.fillStyle = teamDeep(e.team);
-  roundRect(ctx, -bodyW * 0.18, king ? -0.42 : -0.22, bodyW * 0.36, king ? 0.28 : 0.2, 0.03);
+  ctx.fillStyle = k.deep;
+  roundRect(ctx, -bodyW * 0.2, king ? -0.55 : -0.28, bodyW * 0.4, king ? 0.32 : 0.22, 0.03);
   ctx.fill();
-  ctx.fillStyle = e.active ? glow : "rgba(0,0,0,0.45)";
+  ctx.fillStyle = e.active ? k.rim : "rgba(0,0,0,0.45)";
   ctx.globalAlpha = e.active ? 0.95 : 0.28;
-  ctx.fillRect(-bodyW * 0.14, king ? -0.34 : -0.16, bodyW * 0.28, 0.08);
+  ctx.fillRect(-bodyW * 0.16, king ? -0.46 : -0.22, bodyW * 0.32, 0.09);
   ctx.globalAlpha = 1;
+  ctx.strokeStyle = k.metalLight;
+  ctx.lineWidth = 0.03;
+  ctx.strokeRect(-bodyW * 0.2, king ? -0.55 : -0.28, bodyW * 0.4, king ? 0.32 : 0.22);
 
-  const mastX = king ? 0.55 : 0.36;
-  const mastTop = king ? -1.55 : -0.92;
-  ctx.strokeStyle = "#8a8070";
-  ctx.lineWidth = king ? 0.09 : 0.07;
+  const mastX = king ? 0.72 : 0.42;
+  const mastTop = king ? -2.15 : -1.15;
+  ctx.strokeStyle = k.metal;
+  ctx.lineWidth = king ? 0.11 : 0.08;
   ctx.beginPath();
-  ctx.moveTo(mastX, -0.1);
+  ctx.moveTo(mastX, -0.2);
   ctx.lineTo(mastX, mastTop);
   ctx.stroke();
-  ctx.strokeStyle = glow;
+  if (king) {
+    ctx.lineWidth = 0.07;
+    ctx.beginPath();
+    ctx.moveTo(-0.55, -0.15);
+    ctx.lineTo(-0.55, -1.55);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = k.rim;
   ctx.lineWidth = 0.04;
   ctx.beginPath();
   ctx.moveTo(mastX, mastTop);
-  ctx.lineTo(mastX + 0.42, mastTop + 0.38);
-  ctx.lineTo(mastX, mastTop + 0.52);
+  ctx.lineTo(mastX + (king ? 0.7 : 0.42), mastTop + (king ? 0.5 : 0.32));
+  ctx.lineTo(mastX, mastTop + (king ? 0.68 : 0.42));
   ctx.stroke();
 
-  ctx.fillStyle = glow;
+  ctx.fillStyle = k.rim;
   ctx.beginPath();
-  ctx.moveTo(-0.04, king ? -0.58 : -0.36);
-  ctx.lineTo(king ? 0.62 : 0.42, king ? -0.82 : -0.52);
-  ctx.lineTo(king ? 0.62 : 0.42, king ? -0.42 : -0.26);
+  ctx.moveTo(-0.08, king ? -0.72 : -0.42);
+  ctx.lineTo(king ? 0.95 : 0.52, king ? -1.12 : -0.62);
+  ctx.lineTo(king ? 0.95 : 0.52, king ? -0.52 : -0.28);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = BRASS;
-  ctx.lineWidth = 0.045;
+  ctx.lineWidth = 0.05;
   ctx.stroke();
 
   if (!e.active && king) {
-    ctx.fillStyle = "rgba(10, 12, 8, 0.4)";
-    roundRect(ctx, -bodyW * 0.5, -wallH * 0.55, bodyW, wallH + 0.55, 0.1);
+    ctx.fillStyle = "rgba(10, 12, 8, 0.42)";
+    roundRect(ctx, -bodyW * 0.5, -wallH * 0.55, bodyW, wallH + 0.62, 0.1);
     ctx.fill();
   }
   ctx.restore();
@@ -483,6 +959,7 @@ function drawTower(ctx: CanvasRenderingContext2D, e: Entity): void {
 function drawBuilding(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: number): void {
   ctx.save();
   ctx.translate(e.x, e.y);
+  ctx.scale(1.55, 1.55);
   if (now < e.deployUntil) {
     const k = 1 - (e.deployUntil - now) / 0.42;
     ctx.translate(0, (1 - clamp(k, 0, 1)) * -0.7);
@@ -490,90 +967,51 @@ function drawBuilding(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: 
     ctx.scale(0.82 + clamp(k, 0, 1) * 0.18, 0.82 + clamp(k, 0, 1) * 0.18);
   }
   if (e.dying > 0) {
-    ctx.globalAlpha = Math.max(0, e.dying * 3);
-    drawDeathPuff(ctx, e, 1 - clamp(e.dying / 0.28, 0, 1));
+    const k = 1 - clamp(e.dying / 0.28, 0, 1);
+    ctx.globalAlpha = Math.max(0.2, 1 - k);
+    ctx.scale(1 + k * 0.1, 1 - k * 0.4);
+    drawPillbox(ctx, e, t);
+    drawDeathPuff(ctx, e, k);
     ctx.restore();
     return;
   }
-
-  ctx.beginPath();
-  ctx.ellipse(0, 0.42, 0.78, 0.24, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.32)";
-  ctx.fill();
   drawPillbox(ctx, e, t);
-
   if (justStruck(e, now)) {
-    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fillStyle = "rgba(255,255,220,0.28)";
     ctx.beginPath();
-    ctx.arc(0, 0, 0.7, 0, Math.PI * 2);
+    ctx.arc(0, -0.1, 0.85, 0, Math.PI * 2);
     ctx.fill();
   }
-  if (now < e.frozenUntil) smokeOverlay(ctx, 0.75);
+  if (now < e.frozenUntil) smokeOverlay(ctx, 0.95);
   ctx.restore();
 }
 
-function drawPillbox(ctx: CanvasRenderingContext2D, e: Entity, t = 0): void {
-  const glow = teamGlow(e.team);
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 6;
-    const px = Math.cos(a) * 0.7;
-    const py = Math.sin(a) * 0.42 + 0.08;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-  const g = ctx.createLinearGradient(0, -0.5, 0, 0.5);
-  g.addColorStop(0, "#cbb98a");
-  g.addColorStop(0.45, e.color);
-  g.addColorStop(1, teamDeep(e.team));
-  ctx.fillStyle = g;
-  ctx.fill();
-  ctx.strokeStyle = glow;
-  ctx.lineWidth = 0.08;
-  ctx.stroke();
-
-  ctx.fillStyle = teamDeep(e.team);
-  ctx.fillRect(-0.28, -0.08, 0.56, 0.12);
-  ctx.fillStyle = glow;
-  ctx.globalAlpha = 0.75 + Math.sin(t * 5) * 0.15;
-  ctx.fillRect(-0.2, -0.05, 0.4, 0.05);
-  ctx.globalAlpha = 1;
-
-  ctx.strokeStyle = "#8a8070";
-  ctx.lineWidth = 0.07;
-  ctx.beginPath();
-  ctx.moveTo(0.18, -0.12);
-  ctx.lineTo(0.18, -0.72);
-  ctx.stroke();
-  ctx.strokeStyle = glow;
-  ctx.lineWidth = 0.03;
-  ctx.beginPath();
-  ctx.moveTo(0.18, -0.72);
-  ctx.lineTo(0.38, -0.52);
-  ctx.stroke();
-}
-
 function drawDeathPuff(ctx: CanvasRenderingContext2D, e: Entity, k: number): void {
-  const n = e.kind === "building" || e.radius > 0.55 ? 7 : 5;
-  ctx.globalAlpha = 0.85 * (1 - k * 0.4);
+  const n = e.kind === "building" || e.radius > 0.55 ? 6 : 4;
+  ctx.save();
+  ctx.globalAlpha = 0.75 * (1 - k * 0.45);
   for (let i = 0; i < n; i++) {
     const a = (Math.PI * 2 * i) / n + e.id * 0.4;
-    const d = 0.12 + k * (0.45 + (i % 3) * 0.12);
+    const d = 0.14 + k * (0.4 + (i % 3) * 0.1);
     ctx.beginPath();
-    ctx.arc(Math.cos(a) * d, Math.sin(a) * d - k * 0.2, 0.14 + (i % 3) * 0.05, 0, Math.PI * 2);
+    ctx.arc(Math.cos(a) * d, Math.sin(a) * d - k * 0.18, 0.12 + (i % 3) * 0.04, 0, Math.PI * 2);
     ctx.fillStyle = i % 2 === 0 ? "rgba(160,155,140,0.7)" : teamMid(e.team);
     ctx.fill();
   }
-  ctx.fillStyle = "#5a5040";
-  for (let i = 0; i < 4; i++) {
-    const a = (Math.PI * 2 * i) / 4 + 0.3;
-    ctx.fillRect(Math.cos(a) * k * 0.55 - 0.04, Math.sin(a) * k * 0.4 - 0.04, 0.08, 0.08);
-  }
+  ctx.restore();
 }
 
 function justStruck(e: Entity, now: number): boolean {
   return now >= e.deployUntil && e.attackCd > e.hitSpeed - 0.16;
+}
+
+function drawUnitBody(ctx: CanvasRenderingContext2D, e: Entity, t: number): void {
+  const id = e.cardId;
+  if (id === "ironhide") drawIronhide(ctx, e, e.bob);
+  else if (id === "bayonet") drawBayonet(ctx, e, e.bob);
+  else if (id === "marksman") drawMarksman(ctx, e);
+  else if (id === "mortar") drawMortar(ctx, e, t);
+  else drawScout(ctx, e, e.bob);
 }
 
 function drawTroop(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: number): void {
@@ -587,189 +1025,41 @@ function drawTroop(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: num
     ctx.globalAlpha = clamp(k + 0.2, 0.2, 1);
   }
   if (e.dying > 0) {
-    drawDeathPuff(ctx, e, 1 - clamp(e.dying / 0.28, 0, 1));
+    const k = 1 - clamp(e.dying / 0.28, 0, 1);
+    ctx.globalAlpha = Math.max(0.15, 1 - k * 0.85);
+    ctx.scale(1 + k * 0.12, 1 - k * 0.5);
+    ctx.rotate(k * 0.55);
+    ctx.save();
+    ctx.rotate(e.facing + Math.PI / 2);
+    const vs = visScale(e.cardId);
+    ctx.scale(vs, vs);
+    drawUnitBody(ctx, e, t);
+    ctx.restore();
+    drawDeathPuff(ctx, e, k);
     ctx.restore();
     return;
   }
   const idle = now >= e.deployUntil && now >= e.frozenUntil;
-  const walk = idle && e.speed > 0 ? Math.sin(e.bob) * 0.05 : Math.sin(t * 3 + e.id) * 0.018;
+  const walk = idle && e.speed > 0 ? Math.sin(e.bob) * 0.04 : 0;
   ctx.translate(0, walk);
-  if (justStruck(e, now)) ctx.scale(1.08, 1.08);
-
-  ctx.beginPath();
-  ctx.ellipse(0, e.radius * 0.9, e.radius * 0.95, e.radius * 0.32, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.32)";
-  ctx.fill();
+  if (justStruck(e, now)) ctx.scale(1.06, 1.06);
 
   ctx.save();
   ctx.rotate(e.facing + Math.PI / 2);
-  const id = e.cardId;
-  if (id === "ironhide") drawIronhide(ctx, e);
-  else if (id === "bayonet") drawBayonet(ctx, e);
-  else if (id === "marksman") drawMarksman(ctx, e);
-  else if (id === "mortar") drawMortar(ctx, e);
-  else drawScout(ctx, e);
-
+  const vs = visScale(e.cardId);
+  ctx.scale(vs, vs);
+  drawUnitBody(ctx, e, t);
   if (justStruck(e, now)) {
-    ctx.globalAlpha = 0.4;
-    ctx.fillStyle = "#fff";
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "#fff6d0";
     ctx.beginPath();
-    ctx.arc(0, 0, e.radius + 0.1, 0, Math.PI * 2);
+    ctx.arc(0, -0.85, 0.18, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 
-  if (now < e.frozenUntil) smokeOverlay(ctx, e.radius + 0.18);
+  if (now < e.frozenUntil) smokeOverlay(ctx, 0.7);
   ctx.restore();
-}
-
-function rimFill(
-  ctx: CanvasRenderingContext2D,
-  e: Entity,
-  path: () => void,
-): void {
-  const g = ctx.createLinearGradient(-0.4, -0.5, 0.4, 0.55);
-  g.addColorStop(0, "#d8d2c4");
-  g.addColorStop(0.45, e.color);
-  g.addColorStop(1, teamDeep(e.team));
-  path();
-  ctx.fillStyle = g;
-  ctx.fill();
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.08;
-  ctx.stroke();
-}
-
-function helmet(ctx: CanvasRenderingContext2D, e: Entity, x: number, y: number, s = 1): void {
-  ctx.beginPath();
-  ctx.ellipse(x, y, 0.16 * s, 0.11 * s, 0, Math.PI, 0);
-  ctx.fillStyle = teamMid(e.team);
-  ctx.fill();
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.04 * s;
-  ctx.stroke();
-  ctx.fillStyle = teamDeep(e.team);
-  ctx.fillRect(x - 0.17 * s, y - 0.02 * s, 0.34 * s, 0.05 * s);
-}
-
-function drawScout(ctx: CanvasRenderingContext2D, e: Entity): void {
-  rimFill(ctx, e, () => {
-    ctx.beginPath();
-    ctx.ellipse(0, 0.16, 0.18, 0.24, 0, 0, Math.PI * 2);
-  });
-  helmet(ctx, e, 0, -0.14, 1.15);
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.055;
-  ctx.beginPath();
-  ctx.moveTo(0.1, 0.04);
-  ctx.lineTo(0.32, -0.22);
-  ctx.stroke();
-}
-
-function drawBayonet(ctx: CanvasRenderingContext2D, e: Entity): void {
-  ctx.fillStyle = "#e8e0cc";
-  ctx.beginPath();
-  ctx.moveTo(0.02, -1.18);
-  ctx.lineTo(0.14, -0.18);
-  ctx.lineTo(-0.08, -0.14);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = BRASS;
-  ctx.lineWidth = 0.055;
-  ctx.stroke();
-  rimFill(ctx, e, () => {
-    ctx.beginPath();
-    ctx.moveTo(-0.32, 0.52);
-    ctx.lineTo(-0.24, -0.12);
-    ctx.lineTo(0.24, -0.12);
-    ctx.lineTo(0.34, 0.52);
-    ctx.closePath();
-  });
-  helmet(ctx, e, 0, -0.26, 1.4);
-}
-
-function drawMarksman(ctx: CanvasRenderingContext2D, e: Entity): void {
-  rimFill(ctx, e, () => {
-    ctx.beginPath();
-    ctx.ellipse(-0.06, 0.22, 0.32, 0.18, -0.4, 0, Math.PI * 2);
-  });
-  helmet(ctx, e, -0.18, 0.02, 1.05);
-  ctx.strokeStyle = teamDeep(e.team);
-  ctx.lineWidth = 0.11;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(-0.12, 0.12);
-  ctx.lineTo(0.78, -0.08);
-  ctx.stroke();
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.05;
-  ctx.beginPath();
-  ctx.moveTo(-0.12, 0.12);
-  ctx.lineTo(0.78, -0.08);
-  ctx.stroke();
-  ctx.strokeStyle = BRASS;
-  ctx.lineWidth = 0.06;
-  ctx.beginPath();
-  ctx.moveTo(0.34, -0.2);
-  ctx.lineTo(0.34, 0.08);
-  ctx.stroke();
-  ctx.fillStyle = teamGlow(e.team);
-  ctx.fillRect(0.7, -0.14, 0.14, 0.08);
-}
-
-function drawIronhide(ctx: CanvasRenderingContext2D, e: Entity): void {
-  const glow = teamGlow(e.team);
-  const steel = ctx.createLinearGradient(-0.7, -0.6, 0.7, 0.6);
-  steel.addColorStop(0, "#d8d2c4");
-  steel.addColorStop(0.45, "#8a9080");
-  steel.addColorStop(1, teamDeep(e.team));
-  roundRect(ctx, -0.72, -0.12, 1.44, 0.78, 0.08);
-  ctx.fillStyle = steel;
-  ctx.fill();
-  ctx.strokeStyle = glow;
-  ctx.lineWidth = 0.09;
-  ctx.stroke();
-  ctx.fillStyle = teamDeep(e.team);
-  for (let i = 0; i < 5; i++) {
-    ctx.fillRect(-0.68 + i * 0.28, 0.52, 0.2, 0.16);
-  }
-  roundRect(ctx, -0.32, -0.48, 0.64, 0.42, 0.08);
-  ctx.fillStyle = "#6a7064";
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = glow;
-  ctx.fillRect(-0.04, -0.92, 0.08, 0.48);
-  ctx.fillRect(-0.18, -0.38, 0.12, 0.1);
-  ctx.fillRect(0.06, -0.38, 0.12, 0.1);
-}
-
-function drawMortar(ctx: CanvasRenderingContext2D, e: Entity): void {
-  rimFill(ctx, e, () => {
-    ctx.beginPath();
-    ctx.ellipse(0, 0.28, 0.46, 0.28, 0, 0, Math.PI * 2);
-  });
-  ctx.strokeStyle = teamDeep(e.team);
-  ctx.lineWidth = 0.2;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(0.02, 0.18);
-  ctx.lineTo(0.48, -0.62);
-  ctx.stroke();
-  ctx.strokeStyle = teamGlow(e.team);
-  ctx.lineWidth = 0.08;
-  ctx.beginPath();
-  ctx.moveTo(0.02, 0.18);
-  ctx.lineTo(0.48, -0.62);
-  ctx.stroke();
-  ctx.fillStyle = BRASS;
-  ctx.beginPath();
-  ctx.arc(0.52, -0.7, 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#e8a040";
-  ctx.beginPath();
-  ctx.arc(0.62, -0.86, 0.06, 0, Math.PI * 2);
-  ctx.fill();
-  helmet(ctx, e, -0.22, 0.08, 0.95);
 }
 
 function drawSpellMarker(ctx: CanvasRenderingContext2D, e: Entity, t: number): void {
@@ -796,19 +1086,13 @@ function drawSpellMarker(ctx: CanvasRenderingContext2D, e: Entity, t: number): v
     ctx.stroke();
     ctx.setLineDash([]);
     if (haze) {
-      ctx.strokeStyle = "rgba(200,198,180,0.55)";
-      ctx.lineWidth = 0.05;
-      for (let i = 0; i < 6; i++) {
-        const a = (Math.PI * 2 * i) / 6 + t * 0.4;
+      ctx.fillStyle = "rgba(200,198,180,0.55)";
+      for (let i = 0; i < 4; i++) {
+        const a = t * 0.5 + i * 1.4;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 0.15, Math.sin(a) * 0.15);
-        ctx.lineTo(Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.7);
-        ctx.stroke();
+        ctx.ellipse(Math.cos(a) * 0.35, Math.sin(a) * 0.2 - 0.2 - k * 0.25, 0.22 + i * 0.06, 0.34 + k * 0.18, a, 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.fillStyle = "rgba(200,198,180,0.7)";
-      ctx.beginPath();
-      ctx.ellipse(0, -0.15 - k * 0.2, 0.28 + k * 0.15, 0.4 + k * 0.25, 0, 0, Math.PI * 2);
-      ctx.fill();
     } else {
       ctx.strokeStyle = "#e8a040";
       ctx.lineWidth = 0.07;
@@ -820,11 +1104,18 @@ function drawSpellMarker(ctx: CanvasRenderingContext2D, e: Entity, t: number): v
       ctx.stroke();
       ctx.strokeStyle = "#f2efe6";
       ctx.beginPath();
-      ctx.moveTo(-0.28, 0);
-      ctx.lineTo(0.28, 0);
-      ctx.moveTo(0, -0.28);
-      ctx.lineTo(0, 0.28);
+      ctx.moveTo(-0.32, 0);
+      ctx.lineTo(0.32, 0);
+      ctx.moveTo(0, -0.32);
+      ctx.lineTo(0, 0.32);
       ctx.stroke();
+      ctx.fillStyle = "#e8a040";
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI / 2) * i + t;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, 0.08, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   } else {
     const pop = (k - 0.78) / 0.22;
@@ -865,22 +1156,61 @@ function drawProjectile(ctx: CanvasRenderingContext2D, p: Projectile): void {
   ctx.translate(p.x, p.y);
   const ang = Math.atan2(p.ty - p.y, p.tx - p.x);
   ctx.rotate(ang);
-  ctx.fillStyle = p.color;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, p.radius * 2.2, p.radius * 0.7, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#f2efe6";
-  ctx.beginPath();
-  ctx.arc(0.05, 0, p.radius * 0.45, 0, Math.PI * 2);
-  ctx.fill();
+  if (p.splash > 0.05) {
+    ctx.fillStyle = "rgba(180,180,170,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(-0.22, 0, 0.28, 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 0.16, 0.09, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f2efe6";
+    ctx.beginPath();
+    ctx.ellipse(0.06, 0, 0.07, 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.ellipse(-0.18, 0, 0.32, 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.radius * 2.1, p.radius * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f2efe6";
+    ctx.beginPath();
+    ctx.arc(0.08, 0, p.radius * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
+}
+
+function visScale(cardId: string | null): number {
+  if (cardId === "ironhide") return 2.05;
+  if (cardId === "mortar") return 2.15;
+  if (cardId === "bayonet") return 2.35;
+  if (cardId === "marksman") return 2.4;
+  return 2.55;
+}
+
+function visHpY(e: Entity): number {
+  if (e.kind === "tower") return e.towerSlot === "king" ? -2.85 : -1.75;
+  const s = visScale(e.cardId);
+  if (e.cardId === "ironhide") return -1.22 * s;
+  if (e.cardId === "bayonet") return -1.28 * s;
+  if (e.cardId === "marksman") return -1.05 * s;
+  if (e.cardId === "mortar") return -1.12 * s;
+  if (e.kind === "building") return -1.35;
+  return -0.95 * s;
 }
 
 function drawHealth(ctx: CanvasRenderingContext2D, e: Entity): void {
   if (e.hp <= 0) return;
-  const w = e.kind === "tower" ? (e.towerSlot === "king" ? 2.25 : 1.82) : Math.max(0.78, e.radius * 2.3);
+  const w = e.kind === "tower" ? (e.towerSlot === "king" ? 2.55 : 1.95) : Math.max(0.95, e.radius * 2.5);
   const h = e.kind === "tower" ? 0.18 : 0.12;
-  const y = e.kind === "tower" ? -(e.towerSlot === "king" ? 2.55 : 1.45) : -e.radius - 0.42;
+  const y = visHpY(e);
   const pct = clamp(e.hp / e.maxHp, 0, 1);
   ctx.save();
   ctx.translate(e.x, e.y);
@@ -936,49 +1266,18 @@ export function roundRect(
   ctx.closePath();
 }
 
-export function drawCardArt(
-  ctx: CanvasRenderingContext2D,
-  cardId: string,
-  w: number,
-  h: number,
-  team: Team = 0,
-): void {
-  const card = cardById(cardId);
-  ctx.clearRect(0, 0, w, h);
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, shade(card.color, 0.55));
-  bg.addColorStop(0.5, shade(card.color, 0.22));
-  bg.addColorStop(1, "#16180f");
-  roundRect(ctx, 0, 0, w, h, 6);
-  ctx.fillStyle = bg;
-  ctx.fill();
-
-  ctx.save();
-  ctx.beginPath();
-  roundRect(ctx, 0, 0, w, h, 6);
-  ctx.clip();
-  ctx.strokeStyle = "rgba(201,162,39,0.18)";
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(-8, h * 0.75);
-  ctx.lineTo(w * 0.65, -8);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.save();
-  ctx.translate(w / 2, h * 0.56);
-  ctx.scale(Math.min(w, h) / 2.55, Math.min(w, h) / 2.55);
-  const fake: Entity = {
+function fakeEntity(cardId: string, team: Team, color: string): Entity {
+  return {
     id: 0,
     team,
-    kind: card.kind === "building" ? "building" : "troop",
+    kind: cardId === "pillbox" ? "building" : "troop",
     cardId,
-    name: card.name,
+    name: cardId,
     x: 0,
     y: 0,
     hp: 1,
     maxHp: 1,
-    radius: 0.4,
+    radius: 0.5,
     flying: false,
     speed: 0,
     range: 0,
@@ -993,39 +1292,79 @@ export function drawCardArt(
     lifetime: 0,
     age: 0,
     facing: -Math.PI / 2,
-    bob: 0,
+    bob: 0.6,
     towerSlot: null,
     active: true,
     dying: 0,
-    color: card.color,
+    color,
   };
+}
+
+export function drawCardArt(
+  ctx: CanvasRenderingContext2D,
+  cardId: string,
+  w: number,
+  h: number,
+  team: Team = 0,
+): void {
+  const card = cardById(cardId);
+  ctx.clearRect(0, 0, w, h);
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, team === 0 ? "#2a4054" : "#4a3c20");
+  bg.addColorStop(0.45, shade(card.color, 0.35));
+  bg.addColorStop(1, "#16180f");
+  roundRect(ctx, 0, 0, w, h, 6);
+  ctx.fillStyle = bg;
+  ctx.fill();
+
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, 0, 0, w, h, 6);
+  ctx.clip();
+  ctx.fillStyle = "rgba(201,162,39,0.12)";
+  ctx.fillRect(0, h * 0.62, w, h * 0.4);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(w / 2, h * 0.64);
+  ctx.scale(Math.min(w, h) / 2.45, Math.min(w, h) / 2.45);
+  const fake = fakeEntity(cardId, team, card.color);
   if (card.kind === "spell") {
     if (cardId === "smoke") {
-      ctx.fillStyle = "rgba(180,180,170,0.55)";
+      ctx.fillStyle = "rgba(180,180,170,0.5)";
       ctx.beginPath();
-      ctx.ellipse(0, -0.15, 0.38, 0.55, 0, 0, Math.PI * 2);
+      ctx.ellipse(-0.15, -0.2, 0.28, 0.48, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(0.18, -0.35, 0.32, 0.55, 0.15, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#c8c4b4";
       ctx.lineWidth = 0.07;
       ctx.setLineDash([0.12, 0.08]);
       ctx.beginPath();
-      ctx.arc(0, 0.15, 0.62, 0, Math.PI * 2);
+      ctx.arc(0, 0.2, 0.7, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     } else {
       ctx.strokeStyle = "#e8a040";
       ctx.lineWidth = 0.07;
       ctx.beginPath();
-      ctx.arc(0, 0, 0.7, 0, Math.PI * 2);
+      ctx.arc(0, 0, 0.72, 0, Math.PI * 2);
       ctx.stroke();
       ctx.beginPath();
       ctx.arc(0, 0, 0.42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-0.28, 0);
+      ctx.lineTo(0.28, 0);
+      ctx.moveTo(0, -0.28);
+      ctx.lineTo(0, 0.28);
       ctx.stroke();
       ctx.fillStyle = "#d45a20";
       ctx.beginPath();
       for (let i = 0; i < 8; i++) {
         const a = (Math.PI * 2 * i) / 8 - Math.PI / 2;
-        const rr = i % 2 === 0 ? 0.38 : 0.16;
+        const rr = i % 2 === 0 ? 0.34 : 0.14;
         const px = Math.cos(a) * rr;
         const py = Math.sin(a) * rr;
         if (i === 0) ctx.moveTo(px, py);
@@ -1035,28 +1374,34 @@ export function drawCardArt(
       ctx.fill();
     }
   } else if (card.kind === "building") {
+    ctx.translate(0, 0.15);
     drawPillbox(ctx, fake, 1);
-  } else if (cardId === "ironhide") drawIronhide(ctx, fake);
-  else if (cardId === "bayonet") drawBayonet(ctx, fake);
-  else if (cardId === "marksman") drawMarksman(ctx, fake);
-  else if (cardId === "mortar") drawMortar(ctx, fake);
-  else {
-    ctx.save();
+  } else if (cardId === "ironhide") {
+    ctx.translate(0, 0.12);
+    drawIronhide(ctx, fake, 0.4);
+  } else if (cardId === "bayonet") {
     ctx.translate(0, 0.08);
+    drawBayonet(ctx, fake, 0.4);
+  } else if (cardId === "marksman") {
+    ctx.translate(0, 0.2);
+    drawMarksman(ctx, fake);
+  } else if (cardId === "mortar") {
+    ctx.translate(0, 0.12);
+    drawMortar(ctx, fake, 1);
+  } else {
     ctx.save();
-    ctx.translate(-0.28, 0.18);
+    ctx.translate(-0.42, 0.18);
     ctx.scale(0.78, 0.78);
-    drawScout(ctx, fake);
+    drawScout(ctx, fake, 0.2);
     ctx.restore();
     ctx.save();
-    ctx.translate(0.28, 0.18);
+    ctx.translate(0.42, 0.18);
     ctx.scale(0.78, 0.78);
-    drawScout(ctx, fake);
+    drawScout(ctx, fake, 1.1);
     ctx.restore();
     ctx.save();
-    ctx.translate(0, -0.22);
-    drawScout(ctx, fake);
-    ctx.restore();
+    ctx.translate(0, -0.28);
+    drawScout(ctx, fake, 0.6);
     ctx.restore();
   }
   ctx.restore();
