@@ -959,6 +959,7 @@ function drawTower(ctx: CanvasRenderingContext2D, e: Entity): void {
 function drawBuilding(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: number): void {
   ctx.save();
   ctx.translate(e.x, e.y);
+  ctx.scale(1.35, 1.35);
   if (now < e.deployUntil) {
     const k = 1 - (e.deployUntil - now) / 0.42;
     ctx.translate(0, (1 - clamp(k, 0, 1)) * -0.7);
@@ -1030,6 +1031,8 @@ function drawTroop(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: num
     ctx.rotate(k * 0.55);
     ctx.save();
     ctx.rotate(e.facing + Math.PI / 2);
+    const vs = visScale(e.cardId);
+    ctx.scale(vs, vs);
     drawUnitBody(ctx, e, t);
     ctx.restore();
     drawDeathPuff(ctx, e, k);
@@ -1043,6 +1046,8 @@ function drawTroop(ctx: CanvasRenderingContext2D, e: Entity, t: number, now: num
 
   ctx.save();
   ctx.rotate(e.facing + Math.PI / 2);
+  const vs = visScale(e.cardId);
+  ctx.scale(vs, vs);
   drawUnitBody(ctx, e, t);
   if (justStruck(e, now)) {
     ctx.globalAlpha = 0.45;
@@ -1182,14 +1187,23 @@ function drawProjectile(ctx: CanvasRenderingContext2D, p: Projectile): void {
   ctx.restore();
 }
 
+function visScale(cardId: string | null): number {
+  if (cardId === "ironhide") return 1.45;
+  if (cardId === "mortar") return 1.55;
+  if (cardId === "bayonet") return 1.7;
+  if (cardId === "marksman") return 1.72;
+  return 1.85;
+}
+
 function visHpY(e: Entity): number {
   if (e.kind === "tower") return e.towerSlot === "king" ? -2.85 : -1.75;
-  if (e.cardId === "ironhide") return -1.22;
-  if (e.cardId === "bayonet") return -1.28;
-  if (e.cardId === "marksman") return -1.12;
-  if (e.cardId === "mortar") return -1.18;
-  if (e.kind === "building") return -1.22;
-  return -0.98;
+  const s = visScale(e.cardId);
+  if (e.cardId === "ironhide") return -1.22 * s;
+  if (e.cardId === "bayonet") return -1.28 * s;
+  if (e.cardId === "marksman") return -1.05 * s;
+  if (e.cardId === "mortar") return -1.12 * s;
+  if (e.kind === "building") return -1.35;
+  return -0.95 * s;
 }
 
 function drawHealth(ctx: CanvasRenderingContext2D, e: Entity): void {
