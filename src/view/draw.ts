@@ -238,11 +238,13 @@ function drawOuterFrame(ctx: CanvasRenderingContext2D): void {
 function drawMudFloor(ctx: CanvasRenderingContext2D, t: number): void {
   const mud = getSprite("mud_tile");
   if (mud) {
-    const tile = 4.4;
+    const tile = 5.6;
     ctx.imageSmoothingEnabled = true;
-    for (let y = -0.4; y < ARENA_H; y += tile) {
-      for (let x = -0.4; x < ARENA_W; x += tile) {
-        ctx.drawImage(mud, x, y, tile + 0.05, tile + 0.05);
+    ctx.imageSmoothingQuality = "high";
+    for (let row = -1, y = -1.2; y < ARENA_H + tile; y += tile * 0.72, row++) {
+      const ox = (row % 2 === 0 ? 0 : tile * 0.45) - tile;
+      for (let x = ox; x < ARENA_W + tile; x += tile) {
+        ctx.drawImage(mud, x, y, tile + 0.08, tile + 0.08);
       }
     }
   } else {
@@ -426,28 +428,28 @@ function drawRiver(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.fillRect(0, y - 0.32, ARENA_W, h + 0.64);
 
   const rg = ctx.createLinearGradient(0, y, 0, y + h);
-  rg.addColorStop(0, "#2a2218");
-  rg.addColorStop(0.18, "#3a3024");
-  rg.addColorStop(0.5, "#4a3c28");
-  rg.addColorStop(0.82, "#32281c");
-  rg.addColorStop(1, "#241c14");
+  rg.addColorStop(0, "#1a140e");
+  rg.addColorStop(0.18, "#2a2016");
+  rg.addColorStop(0.5, "#3a2c1c");
+  rg.addColorStop(0.82, "#241a12");
+  rg.addColorStop(1, "#16100c");
   ctx.fillStyle = rg;
   ctx.fillRect(0, y, ARENA_W, h);
 
   // Sun specular streak (upper-left key).
   ctx.save();
-  ctx.globalAlpha = 0.28;
+  ctx.globalAlpha = 0.42;
   const spec = ctx.createLinearGradient(0, y, ARENA_W, y + h);
   spec.addColorStop(0, "rgba(255, 231, 184, 0)");
-  spec.addColorStop(0.28, "rgba(255, 231, 184, 0.85)");
-  spec.addColorStop(0.42, "rgba(240, 214, 160, 0.35)");
+  spec.addColorStop(0.22, "rgba(255, 231, 184, 0.95)");
+  spec.addColorStop(0.38, "rgba(240, 214, 160, 0.4)");
   spec.addColorStop(1, "rgba(240, 214, 160, 0)");
   ctx.fillStyle = spec;
   ctx.beginPath();
-  ctx.moveTo(1.2, y + 0.15);
-  ctx.lineTo(8.4, y + 0.22);
-  ctx.lineTo(7.6, y + h - 0.15);
-  ctx.lineTo(0.4, y + h - 0.22);
+  ctx.moveTo(0.6, y + 0.12);
+  ctx.lineTo(9.2, y + 0.18);
+  ctx.lineTo(8.2, y + h - 0.12);
+  ctx.lineTo(0.2, y + h - 0.18);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
